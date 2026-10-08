@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createEndpoint } from 'zitejs/backend';
-import { zite } from 'zitejs/db';
+import { createEndpoint } from '#backend';
+import { zite } from '#db';
 import { requireMember } from '../lib/server';
 import { YEARS, ROLES } from '../lib/constants';
 
@@ -14,7 +14,9 @@ export default createEndpoint({
   description: 'Lets a member edit their own name, year, school email and preferred roles. Nothing else.',
   authenticated: true,
   inputSchema: z.object({
-    firstName: z.string().max(80).optional(),
+    // New rule: only a first initial (max 2 characters) is stored, never a full
+    // first name.
+    firstName: z.string().max(2).optional(),
     lastName: z.string().max(80).optional(),
     year: z.string().optional(),
     schoolEmail: z.string().max(200).optional(),

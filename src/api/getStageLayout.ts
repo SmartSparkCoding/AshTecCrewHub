@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createEndpoint } from 'zitejs/backend';
-import { zite } from 'zitejs/db';
+import { createEndpoint } from '#backend';
+import { zite } from '#db';
 import { requireMember, ids, mapShow } from '../lib/server';
 
 export default createEndpoint({
@@ -20,6 +20,8 @@ export default createEndpoint({
       members: members.records.map((m) => ({
         id: m.id,
         name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim(),
+        // Same rule as mapMember: username is the email local part.
+        shortUsername: (m.schoolEmail ?? '').split('@')[0] || 'member',
         year: m.year ?? '',
         roles: m.roles ?? [],
         headOf: m.headOf ?? [],

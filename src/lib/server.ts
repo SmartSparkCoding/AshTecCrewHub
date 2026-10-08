@@ -1,6 +1,6 @@
 // Backend-only helpers shared by endpoints in src/api/.
-import { zite } from 'zitejs/db';
-import type { CrewMembersRecordType, SubEventsRecordType, ShowsRecordType } from 'zitejs/db';
+import { zite } from '#db';
+import type { CrewMembersRecordType, SubEventsRecordType, ShowsRecordType } from '#db';
 
 export const ids = (v?: string | string[] | null): string[] => (v ? (Array.isArray(v) ? v : [v]) : []);
 
@@ -91,7 +91,11 @@ export const mapSubEvent = (e: SubEventsRecordType) => ({
   dateTbc: !!e.dateTbc,
   description: e.description ?? '',
   meetTime: e.meetTime ?? '',
-  timings: e.timings ?? '',
+  // Structured start/end, both "HH:MM" 24-hour or null. The calendar feed
+  // uses these directly; admin pages and the member event row show them as
+  // "19:00 - 21:00" rather than the old free-text "timings" string.
+  startTime: e.startTime ?? null,
+  endTime: e.endTime ?? null,
   thingsToBring: e.thingsToBring ?? '',
   importance: e.importance ?? 'Medium',
   dueDate: e.responseDueDate ?? null,
@@ -103,7 +107,9 @@ export const mapMember = (m: CrewMembersRecordType) => ({
   id: m.id,
   firstName: m.firstName ?? '',
   lastName: m.lastName ?? '',
-  shortUsername: `${(m.lastName ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')}${(m.firstName ?? '').slice(0, 1).toLowerCase()}` || (m.schoolEmail ?? '').split('@')[0],
+  // Username is the local part of the email address, so it can never collide
+  // with another member and matches what people already type to sign in.
+  shortUsername: (m.schoolEmail ?? '').split('@')[0] || 'member',
   year: m.year ?? '',
   email: m.schoolEmail ?? '',
   isAdmin: !!m.isAdmin,
@@ -117,6 +123,8 @@ export const mapMember = (m: CrewMembersRecordType) => ({
   adminNotes: m.adminNotes ?? '',
   isMaintainer: !!m.isMaintainer,
   isPreview: !!m.isPreviewAccount,
+  // Unset means "follow the default": on for admins, off for everyone else.
+  adminNotifications: m.adminNotifications === null || m.adminNotifications === undefined ? !!m.isAdmin : !!m.adminNotifications,
 });
 
 const chunk = <T,>(a: T[], n = 100) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
@@ -140,23 +148,40 @@ export async function upsertAttendance(
 }
 
 /**
- * Keeps "Not Attending Event" in sync: a sub-event is auto-marked for a member
- * when they answered "No" to every show it belongs to, and the auto mark is
- * cleared when that stops being true.
+ * Keeps per-event attendance in step with show responses.
+ *
+ * Show-level answers ("Yes / Maybe / No" to the whole production) and
+ * per-event attendance ("Expected Arrival / Maybe / Not Attending") are two
+ * separate questions, so the per-event row is what the stage manager actually
+ * reads. Without this sync the two sides drift: a member says "Yes" to the
+ * show and the count on /admin/events for that performance stays at 0 until
+ * they set a per-event choice too - the exact complaint in ticket b4be3495.
+ *
+ * Rules:
+ *  - "No" to every show the event belongs to -> set "Not Attending Event".
+ *  - "Yes" to at least one show the event belongs to (and no existing row)
+ *    -> set "Expected Arrival". This is the fix for the mismatch.
+ *  - All "Maybe" (and no existing row) -> set "Maybe". Same fix.
+ *  - Existing rows are NEVER overwritten: a member who explicitly marked
+ *    "Not Attending" on a specific event keeps it even though they said
+ *    "Yes" to the wider show.
+ *  - If the auto "Not Attending Event" mark is on a sub-event that the
+ *    member has somehow stopped declining, the mark is cleared.
+ *
+ * Returns counts so adminRecomputeAttendance can show the user what happened.
  */
 export async function syncAutoAttendance(scope: { memberId?: string; subEventId?: string }) {
-  const [{ records: subs }, { records: resps }, { records: att }] = await Promise.all([
-    scope.subEventId
-      ? zite.subEvents.findOne({ id: scope.subEventId }).then((r) => ({ records: r ? [r] : [] }))
-      : zite.subEvents.findAll({ limit: 2000 }),
+  const { records: subs } = await zite.subEvents.findAll({ limit: 2000 });
+  const wantedSubs = scope.subEventId ? subs.filter((s) => s.id === scope.subEventId) : subs;
+  const [{ records: resps }, { records: att }] = await Promise.all([
     scope.memberId
-      ? zite.showResponses.findAll({ filters: { member: scope.memberId }, limit: 2000 })
-      : zite.showResponses.findAll({ limit: 2000 }),
+      ? await zite.showResponses.findAll({ filters: { member: scope.memberId }, limit: 2000 })
+      : await zite.showResponses.findAll({ limit: 2000 }),
     scope.memberId
-      ? zite.attendance.findAll({ filters: { member: scope.memberId }, limit: 2000 })
+      ? await zite.attendance.findAll({ filters: { member: scope.memberId }, limit: 2000 })
       : scope.subEventId
-        ? zite.attendance.findAll({ filters: { subEvent: scope.subEventId }, limit: 2000 })
-        : zite.attendance.findAll({ limit: 2000 }),
+        ? await zite.attendance.findAll({ filters: { subEvent: scope.subEventId }, limit: 2000 })
+        : await zite.attendance.findAll({ limit: 2000 }),
   ]);
   let memberIds: string[];
   if (scope.memberId) memberIds = [scope.memberId];
@@ -166,17 +191,37 @@ export async function syncAutoAttendance(scope: { memberId?: string; subEventId?
   const attMap = new Map(att.map((a) => [`${ids(a.member)[0]}:${ids(a.subEvent)[0]}`, a]));
   const toSet: Parameters<typeof upsertAttendance>[0] = [];
   const toDelete: string[] = [];
-  for (const s of subs) {
+  let added = 0;
+  let autoSet = 0;
+  let clearedAuto = 0;
+  for (const s of wantedSubs) {
     const showIds = ids(s.shows);
     if (!showIds.length) continue;
     for (const mid of memberIds) {
-      const declined = showIds.every((sh) => respMap.get(`${mid}:${sh}`) === 'No');
+      const responses = showIds.map((sh) => respMap.get(`${mid}:${sh}`));
+      const hasYes = responses.some((r) => r === 'Yes');
+      const allMaybe = responses.every((r) => r === 'Maybe');
+      const declined = responses.length > 0 && responses.every((r) => r === 'No');
       const existing = attMap.get(`${mid}:${s.id}`);
-      if (declined && existing?.status !== 'Not Attending Event')
+      if (declined && existing?.status !== 'Not Attending Event') {
         toSet.push({ memberId: mid, subEventId: s.id, status: 'Not Attending Event', reason: 'Not taking part in this show' });
+        autoSet++;
+      }
       if (!declined && existing?.status === 'Not Attending Event') toDelete.push(existing.id);
+      if (existing) continue;
+      if (hasYes) {
+        toSet.push({ memberId: mid, subEventId: s.id, status: 'Expected Arrival' });
+        added++;
+      } else if (allMaybe) {
+        toSet.push({ memberId: mid, subEventId: s.id, status: 'Maybe' });
+        added++;
+      }
     }
   }
   await upsertAttendance(toSet);
-  for (const id of toDelete) await zite.attendance.delete({ id });
+  for (const id of toDelete) {
+    await zite.attendance.delete({ id });
+    clearedAuto++;
+  }
+  return { added, autoSet, clearedAuto };
 }

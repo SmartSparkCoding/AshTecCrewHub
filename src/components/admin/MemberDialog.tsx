@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { adminSaveMember, setShowResponse } from 'zitejs/api';
+import { adminSaveMember, setShowResponse } from '#api';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@project/components/ui/dialog';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
@@ -11,7 +11,7 @@ import type { AdminData, AdminMember } from '../../lib/useAdminData';
 import { MEMBER_TYPES, ROLES, YEARS } from '../../lib/constants';
 
 type F = Omit<AdminMember, 'id'>;
-const blank: F = { firstName: '', lastName: '', shortUsername: '', year: '', email: '', isAdmin: false, isStaff: false, memberType: 'Normal Member', roles: [], headOf: [], preferredRole1: '', preferredRole2: '', adminNotes: '', isMaintainer: false, isPreview: false };
+const blank: F = { firstName: '', lastName: '', shortUsername: '', year: '', email: '', isAdmin: false, isStaff: false, memberType: 'Normal Member', roles: [], headOf: [], preferredRole1: '', preferredRole2: '', adminNotes: '', isMaintainer: false, isPreview: false, adminNotifications: false };
 
 export default function MemberDialog({ open, member, data, onClose, onSaved, preview }: { open: boolean; member: AdminMember | null; data: AdminData; onClose: () => void; onSaved: () => void; preview?: boolean }) {
   const [f, setF] = useState<F>(blank);
@@ -41,10 +41,10 @@ export default function MemberDialog({ open, member, data, onClose, onSaved, pre
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>{member ? `${member.firstName} ${member.lastName}` : f.isPreview ? 'Add preview account' : 'Add crew member'}</DialogTitle></DialogHeader>
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="space-y-1"><label className="text-sm">First name *</label><Input value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} /></div>
+          <div className="space-y-1"><label className="text-sm">First initial *</label><Input value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} maxLength={2} /></div>
           <div className="space-y-1"><label className="text-sm">Last name</label><Input value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} /></div>
           <div className="space-y-1"><label className="text-sm">School email {f.isPreview ? '(optional — made up automatically)' : '*'}</label><Input type="email" value={f.email} onChange={(e) => set({ email: e.target.value })} /></div>
           <div className="space-y-1"><label className="text-sm">Year</label><Pick v={f.year} on={(v) => set({ year: v })} opts={YEARS} ph="Select year" /></div>
@@ -63,7 +63,7 @@ export default function MemberDialog({ open, member, data, onClose, onSaved, pre
           <div className="space-y-1"><label className="text-sm">Preferred role 1</label><Pick v={f.preferredRole1} on={(v) => set({ preferredRole1: v })} opts={ROLES} ph="—" /></div>
           <div className="space-y-1"><label className="text-sm">Preferred role 2</label><Pick v={f.preferredRole2} on={(v) => set({ preferredRole2: v })} opts={ROLES} ph="—" /></div>
           <div className="sm:col-span-2 space-y-1"><label className="text-sm">Admin notes (things said in person, etc.)</label><Textarea value={f.adminNotes} onChange={(e) => set({ adminNotes: e.target.value })} /></div>
-          {member && (
+          {member && !member.isStaff && (
             <div className="sm:col-span-2 space-y-2 rounded-xl border p-3">
               <p className="text-sm font-medium">Show participation (record on their behalf)</p>
               {data.shows.map((s) => (

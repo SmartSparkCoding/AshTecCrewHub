@@ -1,16 +1,18 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { logout } from 'zitejs/auth';
+import { logout } from '#auth';
 import { Button } from '@project/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@project/components/ui/dropdown-menu';
 import {
-  CalendarCheck, CalendarDays, ChevronDown, DoorOpen, Eye, LayoutGrid, LifeBuoy, Lightbulb,
-  Mail, LogOut, Settings2, ShieldCheck, User, Users,
+  Activity, CalendarCheck, CalendarDays, ChevronDown, DoorOpen, Eye, HeartHandshake,
+  LayoutGrid, LifeBuoy, Lightbulb, Wrench,
+  Mail, LogOut, Settings2, ShieldCheck, User, Users, Tv,
 } from 'lucide-react';
 import SupportButton from './SupportButton';
 import PresenceBanner from './PresenceBanner';
 import { LivePresenceProvider, useLivePresence } from '../lib/livePresence';
+import { usePageView } from '../hooks/usePageView';
 import Tutorial from './Tutorial';
 import { previewId, exitPreview } from '../lib/preview';
 import { cn } from '@project/components/lib/utils';
@@ -28,28 +30,40 @@ export default function AppShell() {
 }
 
 function Shell() {
-  const { me, supportAwaiting } = useMe();
+  const { me, supportAwaiting, liveShowActive } = useMe();
   const loc = useLocation();
+  usePageView(loc.pathname);
   const { session } = useLivePresence();
   // Staff get the roster read-only; only admins get the controls.
   const canRunCheckIn = me.isAdmin || me.isStaff;
 
+  const isStaffUser = me.isStaff && me.memberType !== 'Actor';
+  // Staff land on the roster, not "My Events", and the parents page is for
+  // adults who run the club, so ordinary members never see it in the bar.
   const links = me.memberType === 'Actor' ? [{ to: '/', label: 'Who to Contact', icon: LayoutGrid }] : [
-    { to: '/', label: 'My Events', icon: CalendarCheck },
+    { to: '/', label: isStaffUser ? 'Roster' : 'My Events', icon: isStaffUser ? Users : CalendarCheck },
     { to: '/attendance', label: 'Check-in', icon: DoorOpen, live: session !== null },
     { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-    { to: '/profile', label: 'My Profile', icon: User },
+    ...(me.isAdmin || isStaffUser ? [{ to: '/parents', label: 'For parents', icon: HeartHandshake }] : []),
+    { to: '/tools', label: 'Tools', icon: Wrench },
+    { to: '/profile', label: 'Settings', icon: User },
     { to: '/stage', label: 'Stage Layout', icon: LayoutGrid },
-    ...(canRunCheckIn ? [{ to: '/admin/attendance', label: 'Venue Check-in', icon: DoorOpen }] : []),
+    // The live show dashboard appears for admins at all times and for everyone while a show is on.
+    ...(me.isAdmin || liveShowActive ? [{ to: '/show-dash', label: 'Live Show', icon: Tv }] : []),
   ];
 
   // Every admin page lives behind one dropdown so the top bar stays short.
+  // Staff who are not admins only get the check-in controls; everything deeper
+  // stays admin-only.
   const adminLinks = [
+    ...(canRunCheckIn ? [{ to: '/admin/attendance', label: 'Venue Check-in', icon: DoorOpen }] : []),
     { to: '/admin/events', label: 'Manage Events', icon: Settings2 },
     { to: '/admin/members', label: 'Crew', icon: Users },
     { to: '/admin/emails', label: 'Emails', icon: Mail },
     { to: '/admin/support', label: 'Support', icon: LifeBuoy, badge: supportAwaiting },
-  ];
+    { to: '/admin/live-show', label: 'Live Show Setup', icon: Tv },
+    { to: '/admin/diagnostics', label: 'Server diagnostics', icon: Activity },
+  ].filter((l) => me.isAdmin || l.to === '/admin/attendance');
   const inAdmin = loc.pathname.startsWith('/admin');
 
   return (
@@ -60,8 +74,8 @@ function Shell() {
           <Button size="sm" variant="secondary" className="h-7" onClick={exitPreview}>Exit preview</Button>
         </div>
       )}
-      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-4">
+      <header className="app-header sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-4">
           <div className="flex items-center gap-2 font-bold shrink-0">
             <Lightbulb className="h-5 w-5 text-primary" />
             <span className="hidden sm:inline">{PLATFORM}</span>
@@ -147,7 +161,7 @@ function Shell() {
           </div>
         </div>
       </header>
-      <main className="max-w-6xl mx-auto px-4 pt-8 pb-20">
+      <main className="app-main max-w-7xl mx-auto px-4 pt-8 pb-20">
         <PresenceBanner hide={loc.pathname === '/attendance'} />
         <Outlet />
       </main>
