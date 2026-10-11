@@ -13,7 +13,6 @@ export default createEndpoint({
     areaName: z.string().optional(),
     status: z.string().optional(),
     open: z.boolean().optional(),
-    code: z.string().optional(),
     intermissionMinutes: z.number().optional(),
     currentSceneIndex: z.number().optional(),
     crewCanEdit: z.boolean().optional(),
@@ -30,7 +29,6 @@ export default createEndpoint({
     if (input.name !== undefined) record.name = input.name;
     if (input.areaName !== undefined) record.areaName = input.areaName;
     if (input.status !== undefined) record.status = isLiveShowStatus(input.status) ? input.status : 'standby';
-    if (input.code !== undefined) record.code = input.code;
     if (input.intermissionMinutes !== undefined) record.intermissionMinutes = Math.max(0, Math.floor(input.intermissionMinutes));
     if (input.currentSceneIndex !== undefined) record.currentSceneIndex = Math.max(0, Math.floor(input.currentSceneIndex));
     if (input.crewCanEdit !== undefined) record.crewCanEdit = !!input.crewCanEdit;

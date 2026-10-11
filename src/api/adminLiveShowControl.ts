@@ -1,38 +1,46 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
-import { requireAdmin } from '../lib/server';
+import { findMemberByEmail, requireAdmin } from '../lib/server';
 import { mapLiveShow, liveShowElapsedMs, isLiveShowStatus } from '../lib/liveShow';
+import { verifyAdminSecret } from '../../server/catLogin.js';
 
+/**
+ * Drives the show clock, current scene, status and the share-default movement
+ * config (ticket f75f7b40). Reachable two ways: a signed-in admin session, or
+ * an admin email + cat-login secret from a stage screen that is not signed in
+ * (the old "show code" is gone). Movement edits here are the DEFAULTS new
+ * screens copy; they do not retro-change screens that already customised.
+ */
 export default createEndpoint({
-  description: 'Controls the live show clock, current scene and status (admins, or the show code)',
+  description: 'Controls the live show clock, current scene, status and movement defaults (admins)',
   authenticated: false,
   inputSchema: z.object({
     liveShowId: z.string(),
     action: z.string(),
     status: z.string().optional(),
     sceneIndex: z.number().optional(),
-    // Movement-alert config, editable from the in-dashboard quick controls
-    // (ticket f75f7b40) as well as the setup page.
     movementAlert: z.boolean().optional(),
-    movementMessage: z.string().max(300).optional(),
-    movementSeconds: z.number().optional(),
+    movementMessage: z.string().max(400).optional(),
+    movementSeconds: z.number().min(2).max(600).optional(),
     movementAdmins: z.array(z.string()).max(50).optional(),
-    // Quick controls on a stage screen (ticket f75f7b40) unlock with the show
-    // code, so a signed-out machine behind the code can still drive the clock.
-    // A signed-in caller is held to the admin rule instead.
-    code: z.string().optional(),
+    email: z.string().email().optional(),
+    secret: z.string().max(200).optional(),
   }),
   outputSchema: z.any(),
   execute: async ({ input, context }) => {
-    const ls = await zite.liveShows.findOne({ id: input.liveShowId });
-    if (!ls) throw new Error('Live show not found.');
     if (context.user) {
       await requireAdmin(context.user.email);
     } else {
-      const expected = (ls.code ?? '').trim();
-      if (!expected || (input.code ?? '').trim() !== expected) throw new Error('Admins only.');
+      const email = (input.email ?? '').trim();
+      const secret = input.secret ?? '';
+      const member = email ? await findMemberByEmail(email) : undefined;
+      if (!member?.isAdmin || !secret || !(await verifyAdminSecret(email, secret))) {
+        throw new Error('Admins only.');
+      }
     }
+    const ls = await zite.liveShows.findOne({ id: input.liveShowId });
+    if (!ls) throw new Error('Live show not found.');
     const record: Record<string, unknown> = {};
     switch (input.action) {
       case 'start':
@@ -63,9 +71,9 @@ export default createEndpoint({
         break;
       case 'movement':
         if (typeof input.movementAlert === 'boolean') record.movementAlert = input.movementAlert;
-        if (typeof input.movementMessage === 'string') record.movementMessage = input.movementMessage.slice(0, 300);
-        if (typeof input.movementSeconds === 'number') record.movementSeconds = Math.min(145, Math.max(2, Math.floor(input.movementSeconds)));
-        if (Array.isArray(input.movementAdmins)) record.movementAdmins = input.movementAdmins;
+        if (typeof input.movementMessage === 'string') record.movementMessage = input.movementMessage.slice(0, 400);
+        if (typeof input.movementSeconds === 'number') record.movementSeconds = Math.min(600, Math.max(2, Math.floor(input.movementSeconds)));
+        if (Array.isArray(input.movementAdmins)) record.movementAdmins = [...new Set(input.movementAdmins)];
         break;
       default:
         throw new Error(`Unknown live show action: ${input.action}`);

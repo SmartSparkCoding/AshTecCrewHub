@@ -357,7 +357,6 @@ CREATE TABLE IF NOT EXISTS "LiveShows" (
   "areaName"            text NOT NULL DEFAULT 'Stage',
   "status"              text NOT NULL DEFAULT 'standby',
   "open"                boolean NOT NULL DEFAULT false,
-  "code"                text NOT NULL DEFAULT '',
   "intermissionMinutes" int NOT NULL DEFAULT 15,
   "timerMode"           text NOT NULL DEFAULT 'stopped',
   "timerStartAt"        timestamptz,
@@ -423,16 +422,24 @@ ALTER TABLE "LiveShowScripts" ADD COLUMN IF NOT EXISTS "privateLink" text NOT NU
 -- locked-off display.
 -- ---------------------------------------------------------------------------
 
--- Movement-alert config lives on the live show itself; movementAdmins are the
--- "special admins" who receive a PWA push when a screen is moved.
+-- The show no longer carries a passcode (the "show code" was removed): a stage
+-- screen is enabled by selecting an admin and entering their cat-login secret.
+ALTER TABLE "LiveShows" DROP COLUMN IF EXISTS "code";
+
+-- Movement/key-alert DEFAULTS live on the live show. Each device copies these
+-- when it is first enabled and can then override them (see LiveShowDevices).
+-- movementAdmins are the "special admins" who receive a PWA push.
 ALTER TABLE "LiveShows" ADD COLUMN IF NOT EXISTS "movementAlert"   boolean NOT NULL DEFAULT false;
 ALTER TABLE "LiveShows" ADD COLUMN IF NOT EXISTS "movementMessage" text NOT NULL DEFAULT '';
 ALTER TABLE "LiveShows" ADD COLUMN IF NOT EXISTS "movementSeconds" int NOT NULL DEFAULT 30;
 ALTER TABLE "LiveShows" ADD COLUMN IF NOT EXISTS "movementAdmins"  uuid[] NOT NULL DEFAULT '{}';
 
--- One row per browser watching the board. deviceKey is minted by the browser
--- and kept in localStorage, so re-connecting updates the same row rather than
--- growing the list; member is null for a signed-out guest behind the code.
+-- One row per browser enabled for the board. deviceKey is minted by the browser
+-- and kept in localStorage, so a reload/reboot re-attaches to the same row. A
+-- screen only shows the board once an admin has enabled it (enabled = true) by
+-- picking their name and entering their cat-login PIN; that is remembered for
+-- the life of the show. Movement config is per device, seeded from the show's
+-- defaults on enable and then independently adjustable from the device panel.
 CREATE TABLE IF NOT EXISTS "LiveShowDevices" (
   "id"              uuid PRIMARY KEY,
   "liveShowId"      uuid NOT NULL,
@@ -441,8 +448,13 @@ CREATE TABLE IF NOT EXISTS "LiveShowDevices" (
   "platform"        text NOT NULL DEFAULT '',
   "userAgent"       text NOT NULL DEFAULT '',
   "member"          uuid,
+  "enabled"         boolean NOT NULL DEFAULT false,
   "online"          boolean NOT NULL DEFAULT true,
   "adminView"       boolean NOT NULL DEFAULT false,
+  "movementAlert"   boolean NOT NULL DEFAULT false,
+  "movementMessage" text NOT NULL DEFAULT '',
+  "movementSeconds" int NOT NULL DEFAULT 30,
+  "movementAdmins"  uuid[] NOT NULL DEFAULT '{}',
   "lastSeenAt"      timestamptz NOT NULL DEFAULT now(),
   "lastMovementAt"  timestamptz,
   "movementAckAt"   timestamptz,
@@ -451,6 +463,26 @@ CREATE TABLE IF NOT EXISTS "LiveShowDevices" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "LiveShowDevices_key" ON "LiveShowDevices" ("liveShowId", "deviceKey");
 CREATE INDEX IF NOT EXISTS "LiveShowDevices_show_idx" ON "LiveShowDevices" ("liveShowId");
+
+-- Additive columns for device rows created before per-device config existed.
+ALTER TABLE "LiveShowDevices" ADD COLUMN IF NOT EXISTS "enabled"         boolean NOT NULL DEFAULT false;
+ALTER TABLE "LiveShowDevices" ADD COLUMN IF NOT EXISTS "movementAlert"   boolean NOT NULL DEFAULT false;
+ALTER TABLE "LiveShowDevices" ADD COLUMN IF NOT EXISTS "movementMessage" text NOT NULL DEFAULT '';
+ALTER TABLE "LiveShowDevices" ADD COLUMN IF NOT EXISTS "movementSeconds" int NOT NULL DEFAULT 30;
+ALTER TABLE "LiveShowDevices" ADD COLUMN IF NOT EXISTS "movementAdmins"  uuid[] NOT NULL DEFAULT '{}';
+
+-- Every time a screen is bumped or a key is pressed on it (a "touch"), we log a
+-- row so Show Setup can review who touched which screen and when. kind is
+-- 'movement' for a physical bump and 'key' for a key press.
+CREATE TABLE IF NOT EXISTS "LiveShowTouches" (
+  "id"          uuid PRIMARY KEY,
+  "liveShowId"  uuid NOT NULL,
+  "deviceKey"   text NOT NULL DEFAULT '',
+  "deviceName"  text NOT NULL DEFAULT '',
+  "kind"        text NOT NULL DEFAULT 'movement',
+  "createdAt"   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS "LiveShowTouches_show_idx" ON "LiveShowTouches" ("liveShowId");
 
 -- The public live chat. Anyone can read it; only admins write. kind is 'chat'
 -- for ordinary posts, 'announcement' when an admin broadcast it (so a timed-out

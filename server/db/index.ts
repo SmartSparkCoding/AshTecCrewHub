@@ -58,9 +58,10 @@ const TABLES = {
   liveShows: { table: 'LiveShows', arr: ['movementAdmins'] },
   liveShowScenes: { table: 'LiveShowScenes', arr: ['cast', 'props', 'notes'] },
   liveShowScripts: { table: 'LiveShowScripts', arr: [] },
-  liveShowDevices: { table: 'LiveShowDevices', arr: [] },
+  liveShowDevices: { table: 'LiveShowDevices', arr: ['movementAdmins'] },
   liveShowMessages: { table: 'LiveShowMessages', arr: [] },
   liveShowAnnouncements: { table: 'LiveShowAnnouncements', arr: [] },
+  liveShowTouches: { table: 'LiveShowTouches', arr: [] },
 } as const satisfies Record<string, TableDef>;
 
 export type TableName = keyof typeof TABLES;

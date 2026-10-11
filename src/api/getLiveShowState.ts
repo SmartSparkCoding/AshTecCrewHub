@@ -1,64 +1,64 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
+import { zite } from '#db';
+import type { AnyRecord } from '#db';
 import {
-  openLiveShow,
+  currentLiveShow,
   loadLiveShowScenes,
-  loadLiveShowScripts,
   loadLiveShowMessages,
   activeAnnouncements,
-  touchLiveShowDevice,
-  isLiveShowStatus,
+  heartbeatLiveShowDevice,
+  mapLiveShow,
+  deviceMovementConfig,
 } from '../lib/liveShow';
 
+/**
+ * Public state for the stage board (ticket f75f7b40).
+ *
+ * The board is hidden until an admin enables the screen (see
+ * enableLiveShowDevice.ts), so an un-enabled browser is told only that a show
+ * is open; it gets no scenes, chat or announcements until it is enabled. An
+ * enabled screen heartbeats here on every poll, which is what keeps its
+ * device row "online" and lets Show Setup see it.
+ */
 export default createEndpoint({
-  description: 'Public live show state, gated by the show code',
+  description: 'Public live show state for a screen that has been enabled',
   authenticated: false,
   inputSchema: z.object({
-    code: z.string().optional(),
     deviceKey: z.string().max(120).optional(),
     deviceName: z.string().max(120).optional(),
     platform: z.string().max(60).optional(),
     userAgent: z.string().max(400).optional(),
   }),
   outputSchema: z.any(),
-  execute: async ({ input, context }) => {
-    const liveShow = await openLiveShow();
-    if (!liveShow) return { open: false };
-    const expected = (liveShow.code ?? '').trim();
-    const given = (input.code ?? '').trim();
-    // Public by default: a code only locks the board once an admin sets one.
-    if (expected && given !== expected) return { open: true, authorized: false };
-    // A guest behind the code still counts as a watching device, exactly like a
-    // signed-in one, so the admin device list shows the whole room.
-    const signedIn = !!context.user;
-    await touchLiveShowDevice(liveShow.id, {
-      deviceKey: input.deviceKey,
-      name: input.deviceName || (signedIn ? 'Crew' : 'Guest'),
-      platform: input.platform,
-      userAgent: input.userAgent,
-      member: null,
-    });
+  execute: async ({ input }) => {
+    const liveShow = await currentLiveShow();
+    if (!liveShow) return { open: false, hasShow: false, enabled: false };
+
+    const deviceKey = String(input.deviceKey ?? '').slice(0, 120);
+    let device: AnyRecord | undefined;
+    if (deviceKey) {
+      device = await zite.liveShowDevices.findOne({ filters: { liveShowId: liveShow.id, deviceKey } });
+      if (device?.enabled) {
+        await heartbeatLiveShowDevice(liveShow.id, {
+          deviceKey,
+          name: input.deviceName,
+          platform: input.platform,
+          userAgent: input.userAgent,
+        });
+      }
+    }
+    if (!device?.enabled) {
+      return { open: !!liveShow.open, hasShow: true, enabled: false, liveShow: mapLiveShow(liveShow) };
+    }
+
     return {
-      open: true,
-      authorized: true,
-      liveShow: {
-        id: liveShow.id,
-        name: liveShow.name ?? '',
-        areaName: liveShow.areaName ?? 'Stage',
-        status: isLiveShowStatus(liveShow.status) ? liveShow.status : 'standby',
-        timerMode: liveShow.timerMode === 'running' ? 'running' : 'stopped',
-        timerStartAt: liveShow.timerStartAt ?? null,
-        timerElapsedMs: Number(liveShow.timerElapsedMs ?? 0),
-        currentSceneIndex: Number(liveShow.currentSceneIndex ?? 0),
-        intermissionMinutes: Number(liveShow.intermissionMinutes ?? 15),
-        crewCanEdit: !!liveShow.crewCanEdit,
-        movementAlert: !!liveShow.movementAlert,
-        movementMessage: liveShow.movementMessage ?? '',
-        movementSeconds: Number(liveShow.movementSeconds ?? 30),
-        movementAdmins: Array.isArray(liveShow.movementAdmins) ? liveShow.movementAdmins : [],
-      },
+      open: !!liveShow.open,
+      hasShow: true,
+      enabled: true,
+      liveShow: mapLiveShow(liveShow),
+      device: { id: String(device.id), name: device.name ?? '', movement: deviceMovementConfig(device) },
       scenes: await loadLiveShowScenes(liveShow.id),
-      scripts: await loadLiveShowScripts(liveShow.id),
       announcements: await activeAnnouncements(liveShow.id),
       messages: await loadLiveShowMessages(liveShow.id),
     };

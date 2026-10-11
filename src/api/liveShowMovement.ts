@@ -1,66 +1,72 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
-import { openLiveShow } from '../lib/liveShow';
-import { ids } from '../lib/server';
+import { openLiveShow, deviceMovementConfig } from '../lib/liveShow';
 import { sendToMembers } from '../../server/push.js';
 
 /**
- * Movement alerting for a locked-off stage screen (ticket f75f7b40).
+ * Movement / key-press alerting for one stage screen (ticket f75f7b40).
  *
- * When the show has movement alerts on, a dashboard that feels a bump calls
- * this with action 'moved'. We record the movement, and - unless the device is
- * already acknowledged - push a notification to the "special admins" chosen in
- * setup, so they get a PWA alert wherever they are. 'ack' is sent when someone
- * taps the on-screen Accept, clearing the warning.
- *
- * Guest devices call this too: the whole point is that a random screen in the
- * room notices it was moved, signed in or not.
+ * Every screen carries its own config (seeded from the show's defaults when it
+ * was enabled). When its alert is on, a bump ("moved") or any key press ("key")
+ * logs a touch, raises the on-screen warning and pushes the screen's own
+ * "special admins". A repeated bump while the warning is still up does NOT
+ * push again; once an admin taps Accept, the next bump warns afresh. "ack"
+ * records that acceptance.
  */
 export default createEndpoint({
-  description: 'Record or acknowledge a live show screen movement',
+  description: 'Record a movement/key alert or acknowledge one for a live show screen',
   authenticated: false,
   inputSchema: z.object({
     liveShowId: z.string().optional(),
     deviceKey: z.string().min(1).max(120),
-    action: z.enum(['moved', 'ack']),
+    action: z.string(),
+    kind: z.string().optional(),
   }),
   outputSchema: z.any(),
   execute: async ({ input }) => {
     const liveShow = input.liveShowId
       ? await zite.liveShows.findOne({ id: input.liveShowId })
       : await openLiveShow();
-    if (!liveShow) throw new Error('No live show is open.');
+    if (!liveShow) return { ok: false };
     const device = await zite.liveShowDevices.findOne({
       filters: { liveShowId: liveShow.id, deviceKey: input.deviceKey },
     });
-    if (!device) return { ok: false };
+    if (!device?.enabled) return { ok: false };
 
     if (input.action === 'ack') {
       await zite.liveShowDevices.update({ id: String(device.id), record: { movementAckAt: new Date().toISOString() } });
-      return { ok: true };
+      return { ok: true, ack: true };
     }
+    if (input.action !== 'moved') return { ok: false };
 
-    if (!liveShow.movementAlert) return { ok: false };
-    const message = (liveShow.movementMessage ?? '').trim() || 'This screen has been moved. Please put it back.';
-    const seconds = Math.max(10, Number(liveShow.movementSeconds ?? 30));
-    // Whether this bump is a fresh one: a device that was acknowledged at or
-    // after its last movement is already handled, so we only ping once per bump.
-    const prevMovement = device.lastMovementAt ? new Date(device.lastMovementAt).getTime() : 0;
-    const acked = device.movementAckAt ? new Date(device.movementAckAt).getTime() : 0;
+    const cfg = deviceMovementConfig(device);
+    if (!cfg.alert) return { ok: false };
+
+    const kind = input.kind === 'key' ? 'key' : 'movement';
+    const prev = device.lastMovementAt ? new Date(device.lastMovementAt).getTime() : 0;
+    const ack = device.movementAckAt ? new Date(device.movementAckAt).getTime() : 0;
+    // There is already an un-accepted warning on this screen: log the touch but
+    // do not warn or push again until it is accepted.
+    const alreadyAlerting = prev > 0 && ack < prev;
+
+    await zite.liveShowTouches.create({
+      record: { liveShowId: liveShow.id, deviceKey: input.deviceKey, deviceName: device.name ?? '', kind },
+    });
     await zite.liveShowDevices.update({ id: String(device.id), record: { lastMovementAt: new Date().toISOString() } });
 
-    if (acked >= prevMovement && prevMovement > 0) return { ok: true, alert: false, message, seconds };
+    const message =
+      cfg.message || (kind === 'key' ? 'Please do not press keys on this screen.' : 'Please do not move this screen.');
+    if (alreadyAlerting) return { ok: true, alert: false, message, seconds: cfg.seconds };
 
-    const recipients = ids(liveShow.movementAdmins);
-    if (recipients.length) {
-      await sendToMembers(recipients, {
-        title: 'Live show screen moved',
-        body: `${device.name || 'A screen'}: ${message}`,
+    if (cfg.admins.length) {
+      await sendToMembers(cfg.admins, {
+        title: kind === 'key' ? 'Live show screen touched' : 'Live show screen moved',
+        body: `${device.name || 'A screen'}: ${cfg.message || 'please leave this screen alone'}`,
         url: '/show-dash',
-        tag: `live-movement-${liveShow.id}`,
+        tag: `live-movement-${liveShow.id}-${device.deviceKey}`,
       }).catch(() => 0);
     }
-    return { ok: true, alert: true, message, seconds };
+    return { ok: true, alert: true, message: cfg.message || '', seconds: cfg.seconds, kind };
   },
 });

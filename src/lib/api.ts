@@ -94,6 +94,13 @@ export type AdminLiveShowControlInputType = NonNullable<_AdminLiveShowControlCfg
 export type AdminLiveShowControlOutputType = Awaited<ReturnType<_AdminLiveShowControlCfg['execute']>>;
 export const adminLiveShowControl = createCaller<AdminLiveShowControlInputType, AdminLiveShowControlOutputType>('adminLiveShowControl');
 
+import type { default as _AdminLiveShowDeviceEp } from '../api/adminLiveShowDevice';
+
+type _AdminLiveShowDeviceCfg = typeof _AdminLiveShowDeviceEp;
+export type AdminLiveShowDeviceInputType = NonNullable<_AdminLiveShowDeviceCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_AdminLiveShowDeviceCfg['execute']>[0]['input'];
+export type AdminLiveShowDeviceOutputType = Awaited<ReturnType<_AdminLiveShowDeviceCfg['execute']>>;
+export const adminLiveShowDevice = createCaller<AdminLiveShowDeviceInputType, AdminLiveShowDeviceOutputType>('adminLiveShowDevice');
+
 import type { default as _AdminMoveRoleEp } from '../api/adminMoveRole';
 
 type _AdminMoveRoleCfg = typeof _AdminMoveRoleEp;
@@ -206,6 +213,13 @@ export type DeletePushSubscriptionInputType = NonNullable<_DeletePushSubscriptio
 export type DeletePushSubscriptionOutputType = Awaited<ReturnType<_DeletePushSubscriptionCfg['execute']>>;
 export const deletePushSubscription = createCaller<DeletePushSubscriptionInputType, DeletePushSubscriptionOutputType>('deletePushSubscription');
 
+import type { default as _EnableLiveShowDeviceEp } from '../api/enableLiveShowDevice';
+
+type _EnableLiveShowDeviceCfg = typeof _EnableLiveShowDeviceEp;
+export type EnableLiveShowDeviceInputType = NonNullable<_EnableLiveShowDeviceCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_EnableLiveShowDeviceCfg['execute']>[0]['input'];
+export type EnableLiveShowDeviceOutputType = Awaited<ReturnType<_EnableLiveShowDeviceCfg['execute']>>;
+export const enableLiveShowDevice = createCaller<EnableLiveShowDeviceInputType, EnableLiveShowDeviceOutputType>('enableLiveShowDevice');
+
 import type { default as _GetCalendarEp } from '../api/getCalendar';
 
 type _GetCalendarCfg = typeof _GetCalendarEp;
@@ -233,13 +247,6 @@ type _GetLiveShowAdminsCfg = typeof _GetLiveShowAdminsEp;
 export type GetLiveShowAdminsInputType = NonNullable<_GetLiveShowAdminsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetLiveShowAdminsCfg['execute']>[0]['input'];
 export type GetLiveShowAdminsOutputType = Awaited<ReturnType<_GetLiveShowAdminsCfg['execute']>>;
 export const getLiveShowAdmins = createCaller<GetLiveShowAdminsInputType, GetLiveShowAdminsOutputType>('getLiveShowAdmins');
-
-import type { default as _GetLiveShowMemberEp } from '../api/getLiveShowMember';
-
-type _GetLiveShowMemberCfg = typeof _GetLiveShowMemberEp;
-export type GetLiveShowMemberInputType = NonNullable<_GetLiveShowMemberCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetLiveShowMemberCfg['execute']>[0]['input'];
-export type GetLiveShowMemberOutputType = Awaited<ReturnType<_GetLiveShowMemberCfg['execute']>>;
-export const getLiveShowMember = createCaller<GetLiveShowMemberInputType, GetLiveShowMemberOutputType>('getLiveShowMember');
 
 import type { default as _GetLiveShowStateEp } from '../api/getLiveShowState';
 
@@ -331,6 +338,13 @@ type _LiveShowMovementCfg = typeof _LiveShowMovementEp;
 export type LiveShowMovementInputType = NonNullable<_LiveShowMovementCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_LiveShowMovementCfg['execute']>[0]['input'];
 export type LiveShowMovementOutputType = Awaited<ReturnType<_LiveShowMovementCfg['execute']>>;
 export const liveShowMovement = createCaller<LiveShowMovementInputType, LiveShowMovementOutputType>('liveShowMovement');
+
+import type { default as _LiveShowUnlockAdminEp } from '../api/liveShowUnlockAdmin';
+
+type _LiveShowUnlockAdminCfg = typeof _LiveShowUnlockAdminEp;
+export type LiveShowUnlockAdminInputType = NonNullable<_LiveShowUnlockAdminCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_LiveShowUnlockAdminCfg['execute']>[0]['input'];
+export type LiveShowUnlockAdminOutputType = Awaited<ReturnType<_LiveShowUnlockAdminCfg['execute']>>;
+export const liveShowUnlockAdmin = createCaller<LiveShowUnlockAdminInputType, LiveShowUnlockAdminOutputType>('liveShowUnlockAdmin');
 
 import type { default as _MemberEditTicketEp } from '../api/memberEditTicket';
 
@@ -483,6 +497,7 @@ export const api = {
   adminGetSupport,
   adminGetTicket,
   adminLiveShowControl,
+  adminLiveShowDevice,
   adminMoveRole,
   adminNoteTicket,
   adminRecomputeAttendance,
@@ -499,11 +514,11 @@ export const api = {
   adminUpdateTicket,
   checkEmail,
   deletePushSubscription,
+  enableLiveShowDevice,
   getCalendar,
   getCalendarFeed,
   getCatLoginAdmins,
   getLiveShowAdmins,
-  getLiveShowMember,
   getLiveShowState,
   getMe,
   getMyCatLoginStatus,
@@ -517,6 +532,7 @@ export const api = {
   liveShowAnnouncement,
   liveShowChat,
   liveShowMovement,
+  liveShowUnlockAdmin,
   memberEditTicket,
   memberGetMyTickets,
   notificationPass,
