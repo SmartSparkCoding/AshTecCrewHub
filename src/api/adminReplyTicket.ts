@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { createEndpoint } from 'zitejs/backend';
-import { zite } from 'zitejs/db';
-import { Email } from 'zitejs/email';
+import { createEndpoint } from '#backend';
+import { zite } from '#db';
+import { Email } from '#email';
 import { requireAdmin, ids } from '../lib/server';
 import { REPLY_KIND, ticketUrl, fullName } from '../lib/support';
 import { SUPPORT_MESSAGE_MAX, noReplyNotice, automatedFooter } from '../lib/emails';
@@ -51,7 +51,7 @@ export default createEndpoint({
     await zite.emailLog.create({
       record: {
         subject, member: submitter.id, recipientEmail: submitter.schoolEmail, purpose: 'Support Reply',
-        body, sentBy: adminName, batchId: '',
+        body, sentBy: adminName, sentAt, batchId: '',
       } as never,
     });
     // Replying re-arms the escalation clock and moves an untouched ticket along.

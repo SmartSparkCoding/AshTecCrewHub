@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { adminGetPresence, presenceEnd, presenceStart } from 'zitejs/api';
+import { adminClearSessionHistory, adminGetPresence, adminGetPresenceHistory, adminRegisterAttendance, presenceEnd, presenceStart } from '#api';
 import { Button } from '@project/components/ui/button';
 import { Badge } from '@project/components/ui/badge';
+import { Checkbox } from '@project/components/ui/checkbox';
+import { Input } from '@project/components/ui/input';
 import { Skeleton } from '@project/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@project/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@project/components/ui/alert-dialog';
-import { DoorOpen, Loader2, LogOut, MapPin, TriangleAlert, UserCheck } from 'lucide-react';
+import { ChevronRight, ClipboardList, DoorOpen, History, Loader2, LogOut, MapPin, QrCode, Search, Trash2, TriangleAlert, UserCheck } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 import { fmtDate } from '../../lib/constants';
+import PresenceHistoryDialog from '../../components/admin/PresenceHistoryDialog';
+import QrScanner from '../../components/admin/QrScanner';
 
 type Row = {
   id: string
@@ -29,11 +34,19 @@ type Row = {
   pendingAction: string | null
 };
 
+type SessionSummary = {
+  id: string; title: string; type: string; date: string | null; status: string;
+  startedAt: string | null; endedAt: string | null; startedByName: string; endedByName: string;
+  checkedIn: number; eventCount: number;
+};
+
 type Payload = {
   session: { id: string; title: string; type: string; date: string | null; startedAt: string | null } | null
   roster: Row[]
   canManage: boolean
   subEvents: { id: string; title: string; date: string | null }[]
+  members: { id: string; name: string; year: string }[]
+  register: { subEventId: string; present: string[] } | null
 };
 
 const STATE_STYLE: Record<string, string> = {
@@ -52,12 +65,13 @@ function backLabel(iso: string | null) {
 }
 
 function RosterGroup({
-  title, hint, rows, empty,
+  title, hint, rows, empty, onSelect,
 }: {
   title: string
   hint?: string
   rows: Row[]
   empty: string
+  onSelect?: (r: Row) => void
 }) {
   return (
     <section className="space-y-2">
@@ -71,29 +85,41 @@ function RosterGroup({
       ) : (
         <ul className="divide-y rounded-2xl border">
           {rows.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-2 px-3.5 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{r.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {[r.year, ...r.roles].filter(Boolean).join(' · ')}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                {r.reasonLabel && <span className="text-muted-foreground">{r.reasonLabel}</span>}
-                {r.reason && <span className="max-w-[22ch] truncate italic text-muted-foreground">“{r.reason}”</span>}
-                {r.comingBack && backLabel(r.expectedBackAt) && (
-                  <span className="text-yellow-400">{backLabel(r.expectedBackAt)}</span>
+            <li key={r.id}>
+              <div
+                role={onSelect ? 'button' : undefined}
+                tabIndex={onSelect ? 0 : undefined}
+                onClick={onSelect ? () => onSelect(r) : undefined}
+                onKeyDown={onSelect ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(r); } } : undefined}
+                className={cn(
+                  'flex flex-wrap items-center gap-2 px-3.5 py-3',
+                  onSelect && 'cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
                 )}
-                {r.pendingAction && (
-                  <Badge variant="outline" className="border-yellow-500/40 bg-yellow-500/10 text-yellow-400">
-                    wants to {r.pendingAction.toLowerCase()}
-                  </Badge>
-                )}
-                {r.state && (
-                  <Badge variant="outline" className={cn('border', STATE_STYLE[r.state] ?? STATE_STYLE['Off Site'])}>
-                    {r.state}
-                  </Badge>
-                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{r.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {[r.year, ...r.roles].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {r.reasonLabel && <span className="text-muted-foreground">{r.reasonLabel}</span>}
+                  {r.reason && <span className="max-w-[22ch] truncate italic text-muted-foreground">“{r.reason}”</span>}
+                  {r.comingBack && backLabel(r.expectedBackAt) && (
+                    <span className="text-yellow-400">{backLabel(r.expectedBackAt)}</span>
+                  )}
+                  {r.pendingAction && (
+                    <Badge variant="outline" className="border-yellow-500/40 bg-yellow-500/10 text-yellow-400">
+                      wants to {r.pendingAction.toLowerCase()}
+                    </Badge>
+                  )}
+                  {r.state && (
+                    <Badge variant="outline" className={cn('border', STATE_STYLE[r.state] ?? STATE_STYLE['Off Site'])}>
+                      {r.state}
+                    </Badge>
+                  )}
+                  {onSelect && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                </div>
               </div>
             </li>
           ))}
@@ -109,6 +135,29 @@ export default function AdminPresence() {
   const [eventId, setEventId] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [history, setHistory] = useState<SessionSummary[]>([]);
+  const [detail, setDetail] = useState<{ sessionId: string; memberId?: string } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  // Ticket 57ce12eb: venue check-in has two jobs - scanning QR codes, and
+  // ticking a register off by hand for sessions where nobody scans.
+  const [tab, setTab] = useState<'qr' | 'register'>('qr');
+  const [registerQ, setRegisterQ] = useState('');
+  const [ticking, setTicking] = useState<string | null>(null);
+  const nav = useNavigate();
+  const [params, setParams] = useSearchParams();
+
+  // A venue notification links to /admin/attendance?scan=1, which should open the
+  // scanner immediately rather than making the admin find the button.
+  useEffect(() => {
+    if (params.get('scan') === '1') {
+      setScannerOpen(true);
+      params.delete('scan');
+      setParams(params, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -120,13 +169,23 @@ export default function AdminPresence() {
     }
   }, []);
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const r = await adminGetPresenceHistory({});
+      setHistory(r.sessions as SessionSummary[]);
+    } catch {
+      // History is secondary; a failure must not break the live roster.
+    }
+  }, []);
+
   useEffect(() => {
     load();
+    loadHistory();
     // Polls because a stage manager is watching this on a laptop across the
     // room while crew scan in; without it the numbers only move on reload.
     const t = setInterval(load, 15000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, loadHistory]);
 
   // Only dated, non-hidden events can host check-in: a TBC date has nothing to
   // check in against. The endpoint already filters both out, so the picker can
@@ -157,11 +216,43 @@ export default function AdminPresence() {
       const r = await presenceEnd({});
       toast.success(r.voided ? `Check-in closed. ${r.voided} pending code(s) voided.` : 'Check-in closed');
       await load();
+      await loadHistory();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
       setConfirmEnd(false);
+    }
+  };
+
+  // Ticket 36b8cfd8: empty the Session backlog. Keeps the live session, so an
+  // admin can tidy the list without touching anyone currently checked in.
+  const clearHistory = async () => {
+    setClearing(true);
+    try {
+      const r = await adminClearSessionHistory({});
+      toast.success(`Cleared ${r.sessions} past session${r.sessions === 1 ? '' : 's'}`);
+      await loadHistory();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setClearing(false);
+      setConfirmClear(false);
+    }
+  };
+
+  // Ticket 57ce12eb: tick or untick one member on the register for the open
+  // session, then refresh so the count and the QR roster can never drift apart.
+  const toggleRegister = async (memberId: string, present: boolean) => {
+    if (!live?.register) return;
+    setTicking(memberId);
+    try {
+      await adminRegisterAttendance({ subEventId: live.register.subEventId, memberId, present });
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setTicking(null);
     }
   };
 
@@ -171,24 +262,113 @@ export default function AdminPresence() {
   const waiting = roster.filter((r) => r.pendingAction);
   const onSite = roster.filter((r) => !r.pendingAction && r.state === 'On Site');
   const away = roster.filter((r) => !r.pendingAction && r.state !== 'On Site');
+  const presentSet = new Set(live.register?.present ?? []);
+  const registerRows = live.members.filter((m) => m.name.toLowerCase().includes(registerQ.toLowerCase()));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">Venue Check-in</h1>
-        {live.session && canManage && (
-          <Button variant="outline" onClick={() => setConfirmEnd(true)} disabled={busy}>
-            <LogOut className="h-4 w-4 mr-1" />End check-in
-          </Button>
-        )}
-        {live.session && !canManage && (
-          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
-            Read-only
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {live.session && canManage && (
+            <Button onClick={() => setScannerOpen(true)} disabled={busy}>
+              <QrCode className="h-4 w-4 mr-1" />Scan a code
+            </Button>
+          )}
+          {live.session && canManage && (
+            <Button variant="outline" onClick={() => setConfirmEnd(true)} disabled={busy}>
+              <LogOut className="h-4 w-4 mr-1" />End check-in
+            </Button>
+          )}
+          {live.session && !canManage && (
+            <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
+              Read-only
+            </span>
+          )}
+        </div>
       </div>
 
-      {!live.session ? (
+      {/* Ticket 57ce12eb: two tabs - scan crew codes, or tick a register by hand. */}
+      <div className="flex w-fit gap-1 rounded-xl border p-1">
+        {([
+          { v: 'qr' as const, label: 'QR check-in', Icon: QrCode },
+          { v: 'register' as const, label: 'Take register', Icon: ClipboardList },
+        ]).map(({ v, label, Icon }) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setTab(v)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+              tab === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            <Icon className="h-4 w-4" />{label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'register' ? (
+        <div className="space-y-4">
+          {!live.session ? (
+            <div className="rounded-2xl border p-6">
+              <h2 className="text-lg font-semibold">No session open</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Open check-in for a session on the QR tab first, then take its register here.
+              </p>
+            </div>
+          ) : !canManage ? (
+            <p className="rounded-xl border border-dashed px-3.5 py-3 text-sm text-muted-foreground">
+              Only admins can take the register.
+            </p>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Register open
+                  </span>
+                  <p className="font-semibold">{live.session.title}</p>
+                  <span className="text-sm text-muted-foreground">{fmtDate(live.session.date)}</span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-mono text-foreground">{presentSet.size}</span> ticked of{' '}
+                  <span className="font-mono text-foreground">{live.members.length}</span> members
+                </p>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={registerQ} onChange={(e) => setRegisterQ(e.target.value)} placeholder="Search members…" className="pl-9" />
+              </div>
+              {registerRows.length === 0 ? (
+                <p className="rounded-xl border border-dashed px-3.5 py-3 text-sm text-muted-foreground">No members match that search.</p>
+              ) : (
+                <ul className="divide-y rounded-2xl border">
+                  {registerRows.map((m) => {
+                    const here = presentSet.has(m.id);
+                    return (
+                      <li key={m.id}>
+                        <label className={cn('flex cursor-pointer items-center gap-3 px-3.5 py-3 transition-colors hover:bg-muted/40', ticking === m.id && 'opacity-60')}>
+                          <Checkbox checked={here} disabled={ticking === m.id} onCheckedChange={(c) => toggleRegister(m.id, !!c)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{m.name}</p>
+                            {m.year && <p className="truncate text-xs text-muted-foreground">{m.year}</p>}
+                          </div>
+                          {here && <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">Present</Badge>}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                <ClipboardList className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Tick members as they arrive. This is separate from the QR roster, so it works even when nobody scans in.
+              </p>
+            </>
+          )}
+        </div>
+      ) : !live.session ? (
         <div className="rounded-2xl border p-6">
           <h2 className="text-lg font-semibold">No check-in is open</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -246,6 +426,7 @@ export default function AdminPresence() {
             <RosterGroup
               title="Waiting for you to approve"
               rows={waiting}
+              onSelect={(r) => live.session && setDetail({ sessionId: live.session.id, memberId: r.memberId })}
               empty={
                 canManage
                   ? "Nobody is waiting. Scan a crew member’s code with your phone camera to approve it."
@@ -255,11 +436,13 @@ export default function AdminPresence() {
             <RosterGroup
               title="In the room"
               rows={onSite}
+              onSelect={(r) => live.session && setDetail({ sessionId: live.session.id, memberId: r.memberId })}
               empty="Nobody has been scanned in yet."
             />
             <RosterGroup
               title="Stepped out"
               rows={away}
+              onSelect={(r) => live.session && setDetail({ sessionId: live.session.id, memberId: r.memberId })}
               empty="Nobody has left."
             />
           </div>
@@ -273,6 +456,71 @@ export default function AdminPresence() {
         </>
       )}
 
+      {history.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+              <History className="h-4 w-4" />Session backlog
+              <span className="font-mono text-xs text-muted-foreground">{history.length}</span>
+            </h2>
+            {canManage && (
+              <Button variant="outline" size="sm" onClick={() => setConfirmClear(true)} disabled={clearing}>
+                {clearing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1 h-3.5 w-3.5" />}
+                Clear
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Open any session to see who signed in and out, when, and which admin approved it.</p>
+          <ul className="divide-y rounded-2xl border">
+            {history.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setDetail({ sessionId: s.id })}
+                  className="flex w-full flex-wrap items-center gap-2 px-3.5 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 truncate font-medium">
+                      {s.title}
+                      {s.status === 'Active' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />live
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {fmtDate(s.date)}
+                      {s.startedAt && ` · ${new Date(s.startedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                      {s.endedAt && ` – ${clock(s.endedAt)}`}
+                      {s.startedByName && ` · opened by ${s.startedByName}`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{s.checkedIn} checked in</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <QrScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onToken={(token) => {
+          setScannerOpen(false);
+          // The /a/:token page already shows the full detail and the
+          // approve/decline controls, so hand over to it rather than duplicating.
+          nav(`/a/${token}`);
+        }}
+      />
+
+      <PresenceHistoryDialog
+        sessionId={detail?.sessionId ?? null}
+        memberId={detail?.memberId}
+        onClose={() => setDetail(null)}
+      />
+
       <AlertDialog open={confirmEnd} onOpenChange={setConfirmEnd}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -285,6 +533,24 @@ export default function AdminPresence() {
           <AlertDialogFooter>
             <AlertDialogCancel>Keep it open</AlertDialogCancel>
             <AlertDialogAction onClick={end} disabled={busy}>End check-in</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear the session backlog?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes every past check-in session and its sign-in/out history. The
+              currently open session (and anyone checked in to it) is kept. This can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={clearHistory} disabled={clearing}>
+              {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Clear backlog'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

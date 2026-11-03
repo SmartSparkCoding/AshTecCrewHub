@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { createEndpoint } from 'zitejs/backend';
-import { zite } from 'zitejs/db';
+import { OPENCODE_TAG_TYPES } from '../lib/supportStyle';
+import { createEndpoint } from '#backend';
+import { zite } from '#db';
 import { requireAdmin, ids } from '../lib/server';
 
 /** A plain label for "hand this to the coding agent". Setting it triggers nothing. */
-export const OPENCODE_TAG_TYPES = ['Bug Report', 'Feature Request'];
 
 export default createEndpoint({
   description: 'Updates the status, assignment or scratchpad notes of a support ticket, or deletes it (admins)',
@@ -12,9 +12,11 @@ export default createEndpoint({
   inputSchema: z.object({
     id: z.string(),
     status: z.enum(['Open', 'In Progress', 'Resolved', 'Closed']).optional(),
+    severity: z.enum(['', 'Low', 'Medium', 'High', 'Urgent']).optional(),
     adminNotes: z.string().optional(),
     assignedMaintainerIds: z.array(z.string()).optional(),
     referToOpencode: z.boolean().optional(),
+    pinned: z.boolean().optional(),
     delete: z.boolean().optional(),
   }),
   outputSchema: z.object({ success: z.boolean() }),
@@ -23,6 +25,9 @@ export default createEndpoint({
     if (input.delete) { await zite.supportTickets.delete({ id: input.id }); return { success: true }; }
     const record: Record<string, unknown> = {};
     if (input.status) record.status = input.status;
+    if (input.severity !== undefined) record.severity = input.severity;
+    // Ticket 636bde75: pin a ticket so it floats to the top of the list.
+    if (input.pinned !== undefined) record.pinned = input.pinned;
     if (input.adminNotes !== undefined) record.adminNotes = input.adminNotes;
     if (input.referToOpencode !== undefined) {
       // A label for humans only, so only the types that describe a real piece
