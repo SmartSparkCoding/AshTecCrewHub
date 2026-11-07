@@ -125,7 +125,7 @@ export default function Ticket() {
 
           <div className="rounded-2xl border bg-card p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-sm">Assigned to</label>
+              <label className="text-sm">Emails for this ticket</label>
               {busy === 'assign' && <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving…</span>}
             </div>
             {data.maintainers.length === 0 && <p className="text-xs text-muted-foreground">No admins available to assign.</p>}
@@ -144,7 +144,12 @@ export default function Ticket() {
                 </label>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Reminders go to whoever is ticked here. With nobody ticked they go to all maintainers.</p>
+            <p className="text-xs text-muted-foreground">
+              {t.assignedMaintainerIds.length === 0
+                ? 'Nobody ticked, so this ticket’s emails go to every maintainer.'
+                : `Only ${t.assignedMaintainerIds.map((id) => data.maintainers.find((m) => m.id === id)?.name ?? 'someone').join(', ')} ${t.assignedMaintainerIds.length === 1 ? 'is' : 'are'} emailed about this ticket.`}
+            </p>
+            <p className="text-xs text-muted-foreground">Ticking someone also assigns the ticket to them, and stops the 12-hour reminders.</p>
           </div>
 
           {OPENCODE_TAG_TYPES.includes(t.type) && (

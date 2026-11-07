@@ -20,6 +20,7 @@ import type { default as _AdminSetMaintainerEp } from '../src/api/adminSetMainta
 import type { default as _AdminUpdateTicketEp } from '../src/api/adminUpdateTicket';
 import type { default as _CheckEmailEp } from '../src/api/checkEmail';
 import type { default as _GetCalendarEp } from '../src/api/getCalendar';
+import type { default as _GetEmailDomainsEp } from '../src/api/getEmailDomains';
 import type { default as _GetMeEp } from '../src/api/getMe';
 import type { default as _GetMyEventsEp } from '../src/api/getMyEvents';
 import type { default as _GetPresenceEp } from '../src/api/getPresence';
@@ -34,6 +35,7 @@ import type { default as _SetAttendanceEp } from '../src/api/setAttendance';
 import type { default as _SetShowResponseEp } from '../src/api/setShowResponse';
 import type { default as _SubmitSupportEp } from '../src/api/submitSupport';
 import type { default as _SupportEscalateEp } from '../src/api/supportEscalate';
+import type { default as _UpdateMyAvatarEp } from '../src/api/updateMyAvatar';
 import type { default as _UpdateMyProfileEp } from '../src/api/updateMyProfile';
 
 type _AdminDeleteSubEventCfg = typeof _AdminDeleteSubEventEp;
@@ -126,6 +128,11 @@ export type GetCalendarInputType = NonNullable<_GetCalendarCfg['inputSchema']> e
 export type GetCalendarOutputType = Awaited<ReturnType<_GetCalendarCfg['execute']>>;
 export const getCalendar = createCaller<GetCalendarInputType, GetCalendarOutputType>('getCalendar');
 
+type _GetEmailDomainsCfg = typeof _GetEmailDomainsEp;
+export type GetEmailDomainsInputType = NonNullable<_GetEmailDomainsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetEmailDomainsCfg['execute']>[0]['input'];
+export type GetEmailDomainsOutputType = Awaited<ReturnType<_GetEmailDomainsCfg['execute']>>;
+export const getEmailDomains = createCaller<GetEmailDomainsInputType, GetEmailDomainsOutputType>('getEmailDomains');
+
 type _GetMeCfg = typeof _GetMeEp;
 export type GetMeInputType = NonNullable<_GetMeCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetMeCfg['execute']>[0]['input'];
 export type GetMeOutputType = Awaited<ReturnType<_GetMeCfg['execute']>>;
@@ -196,6 +203,11 @@ export type SupportEscalateInputType = NonNullable<_SupportEscalateCfg['inputSch
 export type SupportEscalateOutputType = Awaited<ReturnType<_SupportEscalateCfg['execute']>>;
 export const supportEscalate = createCaller<SupportEscalateInputType, SupportEscalateOutputType>('supportEscalate');
 
+type _UpdateMyAvatarCfg = typeof _UpdateMyAvatarEp;
+export type UpdateMyAvatarInputType = NonNullable<_UpdateMyAvatarCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_UpdateMyAvatarCfg['execute']>[0]['input'];
+export type UpdateMyAvatarOutputType = Awaited<ReturnType<_UpdateMyAvatarCfg['execute']>>;
+export const updateMyAvatar = createCaller<UpdateMyAvatarInputType, UpdateMyAvatarOutputType>('updateMyAvatar');
+
 type _UpdateMyProfileCfg = typeof _UpdateMyProfileEp;
 export type UpdateMyProfileInputType = NonNullable<_UpdateMyProfileCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_UpdateMyProfileCfg['execute']>[0]['input'];
 export type UpdateMyProfileOutputType = Awaited<ReturnType<_UpdateMyProfileCfg['execute']>>;
@@ -221,6 +233,7 @@ export const api = {
   adminUpdateTicket,
   checkEmail,
   getCalendar,
+  getEmailDomains,
   getMe,
   getMyEvents,
   getPresence,
@@ -235,5 +248,6 @@ export const api = {
   setShowResponse,
   submitSupport,
   supportEscalate,
+  updateMyAvatar,
   updateMyProfile,
 };

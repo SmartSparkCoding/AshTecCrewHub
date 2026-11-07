@@ -1,16 +1,19 @@
 import { previewId, pv } from '../lib/preview';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { updateMyProfile, getCalendar } from 'zitejs/api';
+import { updateMyProfile, updateMyAvatar, getCalendar } from 'zitejs/api';
+import { useUpload } from 'zitejs/upload';
 import { Button } from '@project/components/ui/button';
 import { Badge } from '@project/components/ui/badge';
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@project/components/ui/select';
-import { Lock, CalendarPlus, ExternalLink } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@project/components/ui/avatar';
+import { Lock, CalendarPlus, ExternalLink, Camera, Loader2, Trash2 } from 'lucide-react';
 import { useMe } from '../lib/me';
 import { ROLES, SELF_YEARS } from '../lib/constants';
 import { buildIcs, downloadIcs } from '../lib/ics';
+import { shrinkImage } from '../lib/image';
 
 export default function Profile() {
   const { me, refreshMe } = useMe();
@@ -21,6 +24,9 @@ export default function Profile() {
   const [p1, setP1] = useState(me.preferredRole1);
   const [p2, setP2] = useState(me.preferredRole2);
   const [busy, setBusy] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const { upload } = useUpload();
   const [previewing, setPreviewing] = useState(false);
 
   // Editing is locked during a preview so nobody edits the wrong member.
@@ -39,6 +45,40 @@ export default function Profile() {
       toast.success(r.emailChanged ? 'Profile saved. Your old email still signs you in if you need it.' : 'Profile saved');
     } catch (e) { toast.error((e as Error).message); }
     finally { setBusy(false); }
+  };
+
+  const pickAvatar = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pick an image file, like a JPG or PNG.');
+      return;
+    }
+    setAvatarBusy(true);
+    try {
+      const small = await shrinkImage(file);
+      const { url } = await upload(small, `avatar-${me.id}.jpg`);
+      await updateMyAvatar({ url });
+      await refreshMe();
+      toast.success('Picture saved');
+    } catch (e) {
+      toast.error((e as Error).message || 'That upload did not work. Try a smaller picture.');
+    } finally {
+      setAvatarBusy(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
+  const clearAvatar = async () => {
+    setAvatarBusy(true);
+    try {
+      await updateMyAvatar({ url: '' });
+      await refreshMe();
+      toast.success('Picture removed');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAvatarBusy(false);
+    }
   };
 
   const Field = ({ k, v }: { k: string; v: React.ReactNode }) => (
@@ -75,6 +115,42 @@ export default function Profile() {
         <Field k="Member type" v={me.memberType} />
         <Field k="Assigned roles" v={me.roles.length ? <div className="flex flex-wrap gap-1">{me.roles.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}</div> : null} />
         <Field k="Head of" v={me.headOf.length ? <div className="flex flex-wrap gap-1">{me.headOf.map((r) => <Badge key={r} className="bg-primary/20 text-primary border-primary/30" variant="outline">{r}</Badge>)}</div> : null} />
+      </div>
+
+      <div className="rounded-2xl border bg-card p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-lg">Your picture</h2>
+          <p className="text-sm text-muted-foreground">Shown next to your name in the crew hub. Only you can change it.</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16 border">
+            {me.profilePictureUrl ? <AvatarImage src={me.profilePictureUrl} alt="" /> : null}
+            <AvatarFallback className="text-lg">{`${me.firstName.slice(0, 1)}${me.lastName.slice(0, 1)}`.toUpperCase() || '?'}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => pickAvatar(e.target.files?.[0])}
+            />
+            <Button
+              variant="outline"
+              disabled={avatarBusy || previewing}
+              onClick={() => fileInput.current?.click()}
+            >
+              {avatarBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+              {me.profilePictureUrl ? 'Change picture' : 'Upload a picture'}
+            </Button>
+            {me.profilePictureUrl && (
+              <Button variant="ghost" disabled={avatarBusy || previewing} onClick={clearAvatar}>
+                <Trash2 className="mr-2 h-4 w-4" />Remove
+              </Button>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Square pictures look best. Big ones are shrunk before they are uploaded.</p>
       </div>
 
       <div className="rounded-2xl border bg-card p-6 space-y-5">

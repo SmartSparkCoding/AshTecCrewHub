@@ -117,6 +117,8 @@ export const mapMember = (m: CrewMembersRecordType) => ({
   adminNotes: m.adminNotes ?? '',
   isMaintainer: !!m.isMaintainer,
   isPreview: !!m.isPreviewAccount,
+  // Cast because the column is added in the Zite editor, not in this repo.
+  profilePictureUrl: (m as { profilePictureUrl?: string | null }).profilePictureUrl ?? '',
 });
 
 const chunk = <T,>(a: T[], n = 100) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
