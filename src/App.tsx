@@ -22,9 +22,13 @@ import Calendar from './pages/Calendar';
 import ApprovePresence from './pages/ApprovePresence';
 import Ticket from './pages/admin/Ticket';
 import LoginCat from './components/LoginCat';
+import Settings from './pages/Settings';
+import AdminSettings from './pages/admin/AdminSettings';
 import { MeContext, type Me } from './lib/me';
+import { applyTheme, readTheme } from './lib/theme';
 
-document.documentElement.classList.add('dark');
+// Dark is the default, but the choice is per device and lives in Settings.
+applyTheme(readTheme());
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -61,12 +65,14 @@ function SignedIn() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/stage" element={<StageLayout />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/settings" element={<Settings />} />
           {me.isAdmin && <Route path="/admin/events" element={<AdminEvents />} />}
           {me.isAdmin && <Route path="/admin/members" element={<AdminMembers />} />}
           {me.isAdmin && <Route path="/admin/emails" element={<EmailLog />} />}
           {me.isAdmin && <Route path="/admin/support" element={<Support />} />}
           {(me.isAdmin || me.isStaff) && <Route path="/admin/attendance" element={<AdminPresence />} />}
           {me.isAdmin && <Route path="/admin/support/:ticketId" element={<Ticket />} />}
+          {me.isAdmin && <Route path="/admin/settings" element={<AdminSettings />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -5,9 +5,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@project/components/ui/dropdown-menu';
 import {
-  CalendarCheck, CalendarDays, ChevronDown, DoorOpen, Eye, LayoutGrid, LifeBuoy, Lightbulb,
-  Mail, LogOut, Settings2, ShieldCheck, User, Users,
+  CalendarCheck, CalendarDays, ChevronDown, Cog, DoorOpen, Eye, LayoutGrid, LifeBuoy, Lightbulb,
+  Mail, LogOut, Settings2, ShieldCheck, SlidersHorizontal, User, Users,
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@project/components/ui/avatar';
 import SupportButton from './SupportButton';
 import PresenceBanner from './PresenceBanner';
 import { LivePresenceProvider, useLivePresence } from '../lib/livePresence';
@@ -40,6 +41,7 @@ function Shell() {
     { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     { to: '/profile', label: 'My Profile', icon: User },
     { to: '/stage', label: 'Stage Layout', icon: LayoutGrid },
+    { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
     ...(canRunCheckIn ? [{ to: '/admin/attendance', label: 'Venue Check-in', icon: DoorOpen }] : []),
   ];
 
@@ -49,6 +51,7 @@ function Shell() {
     { to: '/admin/members', label: 'Crew', icon: Users },
     { to: '/admin/emails', label: 'Emails', icon: Mail },
     { to: '/admin/support', label: 'Support', icon: LifeBuoy, badge: supportAwaiting },
+    { to: '/admin/settings', label: 'Settings', icon: Cog },
   ];
   const inAdmin = loc.pathname.startsWith('/admin');
 
@@ -132,7 +135,15 @@ function Shell() {
           </nav>
           {/* Kept as one tight group so the two icon buttons sit evenly. */}
           <div className="flex items-center gap-1 shrink-0">
-            <span className="text-sm text-muted-foreground hidden sm:inline pr-1">{me.firstName}</span>
+            <NavLink to="/profile" title="My Profile" className="flex items-center gap-2 pr-1 rounded-full">
+              <Avatar className="h-7 w-7 border">
+                {me.profilePictureUrl ? <AvatarImage src={me.profilePictureUrl} alt="" /> : null}
+                <AvatarFallback className="text-[11px]">
+                  {`${me.firstName.slice(0, 1)}${me.lastName.slice(0, 1)}`.toUpperCase() || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm text-muted-foreground hidden sm:inline">{me.firstName}</span>
+            </NavLink>
             <Tutorial />
             <Button
               variant="ghost"

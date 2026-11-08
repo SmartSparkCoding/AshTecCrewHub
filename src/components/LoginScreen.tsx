@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn } from 'zitejs/auth';
 import { loginWithRedirect } from 'zitejs/auth';
-import { checkEmail } from 'zitejs/api';
+import { checkEmail, getEmailDomains } from 'zitejs/api';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { Loader2, Mail } from 'lucide-react';
@@ -20,7 +20,18 @@ export function SignInPanel({ onSent, callbackURL = '/' }: { onSent?: () => void
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<{ email: string; firstName: string } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const valid = /^\S+@\S+\.\S+$/.test(email);
+  const [domains, setDomains] = useState<string[]>([]);
+
+  // The suffixes come from the crew list, so they follow the school rather than
+  // being typed into the code. A failure here just means no shortcuts.
+  useEffect(() => {
+    getEmailDomains({}).then((r) => setDomains(r.domains)).catch(() => setDomains([]));
+  }, []);
+
+  // Typing just "moorej" is enough when the crew only uses one domain.
+  const resolved = email.includes('@') || domains.length !== 1 ? email.trim() : `${email.trim()}@${domains[0]}`;
+  const valid = /^\S+@\S+\.\S+$/.test(resolved);
+  const showSuffixes = !email.includes('@') && domains.length > 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +39,7 @@ export function SignInPanel({ onSent, callbackURL = '/' }: { onSent?: () => void
     setBusy(true);
     setProblem(null);
     try {
-      const who = await checkEmail({ email });
+      const who = await checkEmail({ email: resolved });
       if (!who.exists && !who.setupMode) {
         setProblem('We could not find a crew account for that address. Ask a crew admin to add you.');
         return;
@@ -40,7 +51,7 @@ export function SignInPanel({ onSent, callbackURL = '/' }: { onSent?: () => void
         return;
       }
       const res = await signIn.magicLink({
-        email,
+        email: resolved,
         // The hosted sign-up screen used to ask for this. The crew list already
         // knows it, so pass it through rather than making someone type it again.
         name: who.firstName || email,
@@ -50,7 +61,7 @@ export function SignInPanel({ onSent, callbackURL = '/' }: { onSent?: () => void
         setProblem(res.error.message ?? 'That did not work. Try again in a moment.');
         return;
       }
-      setSent({ email, firstName: who.firstName });
+      setSent({ email: resolved, firstName: who.firstName });
       onSent?.();
     } finally {
       setBusy(false);
@@ -94,6 +105,24 @@ export function SignInPanel({ onSent, callbackURL = '/' }: { onSent?: () => void
           placeholder="you@ashfordschool.co.uk"
           autoComplete="email"
         />
+        {showSuffixes && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-xs text-muted-foreground">Add:</span>
+            {domains.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => {
+                  setEmail(`${email.trim()}@${d}`);
+                  setProblem(null);
+                }}
+                className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:border-primary/60 hover:text-foreground"
+              >
+                @{d}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {problem && <p className="text-sm text-destructive">{problem}</p>}
       <Button className="h-12 w-full rounded-full text-base" disabled={!valid || busy}>
