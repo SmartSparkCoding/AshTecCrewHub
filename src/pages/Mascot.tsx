@@ -7,6 +7,7 @@ import { playSfx } from '../lib/sfx';
 import { Button } from '@project/components/ui/button';
 import { Switch } from '@project/components/ui/switch';
 import { Cat, MessageCircle, Sparkles } from 'lucide-react';
+import FeedTheCat from '../components/FeedTheCat';
 
 /**
  * The crew mascot's page (Batch 8): who Tabby is, and why there is a cat in the
@@ -37,6 +38,9 @@ export default function Mascot() {
           <p className="mt-3 text-lg text-muted-foreground">{MASCOT.tagline}</p>
         </div>
       </div>
+
+      {/* Feed the cat (ticket f3260834) */}
+      <FeedTheCat />
 
       {/* Backstory */}
       <section className="space-y-3">
