@@ -56,7 +56,9 @@ export default function Attendance() {
   // standing there holding their phone up, and slow once it has settled.
   const pending = mine?.pendingAction ?? null;
   useEffect(() => {
-    const t = setInterval(refresh, pending ? 4000 : 15000);
+    // A pending code is the one thing a member is staring at, so it polls hard;
+    // a settled state only needs to notice an admin changing their mind.
+    const t = setInterval(refresh, pending ? 2000 : 5000);
     return () => clearInterval(t);
   }, [refresh, pending]);
 

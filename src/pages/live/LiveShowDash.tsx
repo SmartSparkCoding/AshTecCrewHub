@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   KeyRound, Loader2, Play, Pause, RotateCcw, ChevronLeft, ChevronRight,
   ScrollText, Tv, Settings2, Users, Clapperboard, Lock, MessageSquare, Megaphone, ShieldAlert,
-  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package,
+  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package, Mic,
 } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 import ShowIdle from '../../components/ShowIdle';
@@ -35,6 +35,14 @@ type Board = {
   movementAdmins: string[];
 };
 
+/** Which cast is on, and the mics they are wearing. Two casts share the packs. */
+type MicList = {
+  cast: 'A' | 'B';
+  castAName: string;
+  castBName: string;
+  rows: { number: string; character: string; performer: string }[];
+};
+
 type Scene = {
   id: string; label: string; title: string; minutes: number;
   cast: string[]; props: string[]; notes: string[]; sortIndex: number;
@@ -52,6 +60,7 @@ type StatePayload = {
   scenes?: Scene[];
   messages?: ChatMessage[];
   announcements?: Announcement[];
+  mics?: MicList;
 };
 
 const STATE_KEY = 'ashtec-show-device-key';
@@ -285,11 +294,12 @@ function UnlockModal({ onClose, onUnlocked }: { onClose: () => void; onUnlocked:
 // ---------------------------------------------------------------- board
 
 function BoardView({
-  board, scenes, messages, canSend, onSend,
+  board, scenes, messages, mics, canSend, onSend,
 }: {
   board: Board;
   scenes: Scene[];
   messages: ChatMessage[];
+  mics: MicList | null;
   canSend: boolean;
   onSend: (body: string) => Promise<void>;
 }) {
@@ -490,14 +500,35 @@ function BoardView({
               )}
             </div>
 
-            <div className="flex min-h-[10rem] flex-1 flex-col border-t border-[#f3ece1]/10 pt-3">
+            {mics && mics.rows.length > 0 && (
+              <div className="border-t border-[#f3ece1]/10 pt-3">
+                <div className="flex items-center gap-2 text-[#7e7a86]">
+                  <Mic className="h-3.5 w-3.5" />
+                  <p className="text-[10px] uppercase tracking-[0.4em]">Mics</p>
+                  <span className="ml-auto truncate font-mono text-[10px] uppercase tracking-[0.2em] text-[#d9ab6c]">
+                    {mics.cast === 'B' ? mics.castBName : mics.castAName}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {mics.rows.map((m, i) => (
+                    <div key={`${m.number}-${i}`} className="flex items-baseline gap-2 leading-tight">
+                      <span className="w-12 shrink-0 text-right font-mono text-sm font-bold text-[#d9ab6c]">{m.number || '–'}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-[#efe6d8]">{m.character || '—'}</span>
+                      <span className="min-w-0 max-w-[45%] truncate text-xs text-[#8f8a97]">{m.performer}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex min-h-[8rem] flex-1 flex-col border-t border-[#f3ece1]/10 pt-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-3.5 w-3.5 text-[#7e7a86]" />
                 <p className="text-[10px] uppercase tracking-[0.4em] text-[#7e7a86]">Crew channel</p>
                 {live && <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />}
                 <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.2em] text-[#5d5964]">Newest at the bottom</span>
               </div>
-              <div ref={listRef} className="mt-2 max-h-[38vh] flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 lg:max-h-none">
+              <div ref={listRef} className="mt-2 max-h-[28vh] flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
                 {messages.length === 0 && <p className="text-sm text-[#6f6a77]">Nothing said yet.</p>}
                 {messages.map((m) => (
                   <div
@@ -768,6 +799,7 @@ export default function LiveShowDash() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [mics, setMics] = useState<MicList | null>(null);
   const [device, setDevice] = useState<DeviceInfo | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -788,6 +820,7 @@ export default function LiveShowDash() {
     setScenes((r.scenes ?? []) as Scene[]);
     setMessages((r.messages ?? []) as ChatMessage[]);
     setAnnouncements((r.announcements ?? []) as Announcement[]);
+    setMics((r.mics as MicList) ?? null);
     setDevice((r.device as DeviceInfo) ?? null);
     setPhase('board');
   }, []);
@@ -845,7 +878,10 @@ export default function LiveShowDash() {
 
   useEffect(() => {
     if (phase === 'boot' || phase === 'idle' || phase === 'enable' || phase === 'board') {
-      const id = window.setInterval(() => { void refresh(); }, 5000);
+      // 1.5s: a scene change or a chat line should land while the operator is
+      // still looking at the screen they pressed. The state payload is small and
+      // each poll is one device heartbeat, so this is cheap enough to keep up.
+      const id = window.setInterval(() => { void refresh(); }, 1500);
       const onVis = () => { if (document.visibilityState === 'visible') void refresh(); };
       document.addEventListener('visibilitychange', onVis);
       return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
@@ -991,6 +1027,7 @@ export default function LiveShowDash() {
           board={board}
           scenes={scenes}
           messages={messages}
+          mics={mics}
           canSend={!!cred || isAdmin}
           onSend={sendBoardChat}
         />

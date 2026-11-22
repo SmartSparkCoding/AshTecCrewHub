@@ -10,6 +10,7 @@ import {
   heartbeatLiveShowDevice,
   mapLiveShow,
   deviceMovementConfig,
+  loadMicList,
 } from '../lib/liveShow';
 
 /**
@@ -52,15 +53,23 @@ export default createEndpoint({
       return { open: !!liveShow.open, hasShow: true, enabled: false, liveShow: mapLiveShow(liveShow) };
     }
 
+    const [scenes, announcements, messages, mics] = await Promise.all([
+      loadLiveShowScenes(liveShow.id),
+      activeAnnouncements(liveShow.id),
+      loadLiveShowMessages(liveShow.id),
+      loadMicList(liveShow.showId),
+    ]);
+
     return {
       open: !!liveShow.open,
       hasShow: true,
       enabled: true,
       liveShow: mapLiveShow(liveShow),
       device: { id: String(device.id), name: device.name ?? '', movement: deviceMovementConfig(device) },
-      scenes: await loadLiveShowScenes(liveShow.id),
-      announcements: await activeAnnouncements(liveShow.id),
-      messages: await loadLiveShowMessages(liveShow.id),
+      scenes,
+      announcements,
+      messages,
+      mics,
     };
   },
 });

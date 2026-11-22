@@ -57,6 +57,29 @@ export const mapLiveShow = (l: AnyRecord) => ({
   updatedAt: l.updatedAt ?? null,
 });
 
+/**
+ * The mic list for whichever cast is on (ticket c4a2b6f0). The board only needs
+ * three fields, so notes and ids stay behind; two casts share the packs, which
+ * is why the rows are filtered by cast here rather than on the screen.
+ */
+export const loadMicList = async (showId: string | string[] | null | undefined) => {
+  const id = ids(showId)[0] ?? '';
+  if (!id) return { cast: 'A', castAName: 'Cast X', castBName: 'Cast Z', rows: [] };
+  const show = await zite.shows.findOne({ id }).catch(() => null);
+  const cast = show?.micCast === 'B' ? 'B' : 'A';
+  const { records } = await zite.showMics.findAll({ filters: { show: id }, limit: 500 });
+  const rows = records
+    .filter((r) => String(r.cast ?? 'A') === cast)
+    .sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0) || String(a.number ?? '').localeCompare(String(b.number ?? ''), 'en', { numeric: true }))
+    .map((r) => ({ number: String(r.number ?? ''), character: String(r.character ?? ''), performer: String(r.performer ?? '') }));
+  return {
+    cast,
+    castAName: String(show?.castAName ?? 'Cast X'),
+    castBName: String(show?.castBName ?? 'Cast Z'),
+    rows,
+  };
+};
+
 export const mapDevice = (d: AnyRecord) => ({
   id: d.id,
   deviceKey: d.deviceKey ?? '',

@@ -5,20 +5,21 @@ import {
   getShowWorkspace, saveChecklistItem, saveCue, saveProp, saveShowScene, saveRehearsalNote,
   saveSceneTiming, rollCall, signOffShow, sendCueCall, ackCueCall, requestCover, respondCover,
   setTechLock, getRehearsalOrder, getShowMedia, saveShowPhoto, saveDebrief, saveGreenRoomNote,
-  saveLostItem, saveAudienceCount, type GetShowWorkspaceOutputType, type GetShowMediaOutputType,
+  saveLostItem, saveAudienceCount, saveMic, setMicCast,
+  type GetShowWorkspaceOutputType, type GetShowMediaOutputType,
 } from '#api';
 import { Button } from '@project/components/ui/button';
 import { Badge } from '@project/components/ui/badge';
 import { Input } from '@project/components/ui/input';
 import { Skeleton } from '@project/components/ui/skeleton';
 import { cn } from '@project/components/lib/utils';
-import { ArrowLeft, ClipboardList, Lightbulb, Package, Layers, NotebookPen, Timer, CalendarCheck, Lock, Plus, Trash2, Megaphone, Bell, Camera, MessageSquareHeart, DoorOpen, Search, Ticket, Pin, Printer, Tv, CalendarDays } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Lightbulb, Package, Layers, NotebookPen, Timer, CalendarCheck, Lock, Plus, Trash2, Megaphone, Bell, Camera, MessageSquareHeart, DoorOpen, Search, Ticket, Pin, Printer, Tv, CalendarDays, Mic } from 'lucide-react';
 import LiveShowAdmin from './admin/LiveShowAdmin';
 import AdminEvents from './admin/AdminEvents';
 
 type Ws = GetShowWorkspaceOutputType;
 type Media = GetShowMediaOutputType;
-type Tab = 'live' | 'events' | 'checklist' | 'cues' | 'props' | 'scenes' | 'notes' | 'timings' | 'day' | 'photos' | 'debrief' | 'green' | 'lost' | 'audience';
+type Tab = 'live' | 'events' | 'checklist' | 'cues' | 'props' | 'mics' | 'scenes' | 'notes' | 'timings' | 'day' | 'photos' | 'debrief' | 'green' | 'lost' | 'audience';
 
 const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'live', label: 'Live show', icon: Tv },
@@ -26,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'checklist', label: 'Checklist', icon: ClipboardList },
   { id: 'cues', label: 'Cue sheet', icon: Lightbulb },
   { id: 'props', label: 'Props', icon: Package },
+  { id: 'mics', label: 'Mics', icon: Mic },
   { id: 'scenes', label: 'Scenes', icon: Layers },
   { id: 'notes', label: 'Notes', icon: NotebookPen },
   { id: 'timings', label: 'Timings', icon: Timer },
@@ -141,6 +143,7 @@ export default function ShowWorkspace() {
       {tab === 'checklist' && <Checklist ws={ws} act={act} />}
       {tab === 'cues' && <Cues ws={ws} act={act} />}
       {tab === 'props' && <Props ws={ws} act={act} />}
+      {tab === 'mics' && <Mics ws={ws} act={act} />}
       {tab === 'scenes' && <Scenes ws={ws} act={act} />}
       {tab === 'notes' && <Notes ws={ws} act={act} />}
       {tab === 'timings' && <Timings ws={ws} act={act} />}
@@ -285,6 +288,126 @@ function Props({ ws, act }: { ws: Ws; act: ActFn }) {
           </div>
         ))}
       </div>
+    </Section>
+  );
+}
+
+/**
+ * The mic list (ticket c4a2b6f0). Two casts share the packs, so each cast has
+ * its own rows and the switch says which list the stage board is showing.
+ * Everything saves on blur: a mic number is one keystroke away from correct and
+ * a save button in the middle of a rehearsal is one more thing to forget.
+ */
+function Mics({ ws, act }: { ws: Ws; act: ActFn }) {
+  const [number, setNumber] = useState('');
+  const [character, setCharacter] = useState('');
+  const [performer, setPerformer] = useState('');
+  const cast = (ws.micCast === 'B' ? 'B' : 'A') as 'A' | 'B';
+  const other = (cast === 'A' ? 'B' : 'A') as 'A' | 'B';
+  const nameOf = (c: 'A' | 'B') => (c === 'A' ? ws.castNames.A : ws.castNames.B);
+  const rows = ws.mics.filter((m) => m.cast === cast);
+
+  const add = () => act(async () => {
+    await saveMic({ showId: ws.show.id, cast, number, character, performer });
+    setNumber(''); setCharacter(''); setPerformer('');
+  }, 'Mic added');
+
+  return (
+    <Section>
+      <div className="flex flex-wrap items-center gap-2">
+        {(['A', 'B'] as const).map((c) => (
+          <button
+            key={c}
+            type="button"
+            disabled={!ws.isAdmin || c === cast}
+            onClick={() => act(() => setMicCast({ showId: ws.show.id, cast: c }), `Stage board is on ${nameOf(c)}`)}
+            className={cn('rounded-full border px-3 py-1 text-sm transition disabled:opacity-100',
+              c === cast ? 'border-primary bg-primary/15 text-primary font-medium' : 'border-border text-muted-foreground hover:border-primary/50')}
+          >
+            {nameOf(c)}{c === cast ? ' · on stage' : ''}
+          </button>
+        ))}
+        <span className="text-xs text-muted-foreground">
+          {ws.isAdmin ? 'The switch is the same one in Live show settings.' : 'An admin changes which cast is on.'}
+        </span>
+      </div>
+
+      {ws.isAdmin && (
+        <div className="grid gap-2 sm:grid-cols-2 max-w-lg">
+          {(['A', 'B'] as const).map((c) => (
+            <Input
+              key={`${c}-${nameOf(c)}`}
+              defaultValue={nameOf(c)}
+              maxLength={40}
+              aria-label={`Name for the ${c === 'A' ? 'first' : 'second'} cast`}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (!v || v === nameOf(c)) return;
+                void act(() => setMicCast({ showId: ws.show.id, [c === 'A' ? 'castAName' : 'castBName']: v }), 'Cast renamed');
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {ws.canEdit && (
+        <div className="flex flex-wrap gap-2">
+          <Input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Mic #" className="w-24" maxLength={20} />
+          <Input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Character" className="max-w-[12rem]" maxLength={120} />
+          <Input value={performer} onChange={(e) => setPerformer(e.target.value)} placeholder="Real name" className="max-w-[12rem]" maxLength={120} />
+          <Button disabled={!number.trim() && !character.trim() && !performer.trim()} onClick={() => void add()}>
+            <Plus className="h-4 w-4 mr-1" />Add mic
+          </Button>
+        </div>
+      )}
+
+      {!rows.length && <Empty>No mics on {nameOf(cast)} yet. Add the number, the character and who is wearing it.</Empty>}
+      {rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-2 pr-3 w-24">Mic</th><th className="py-2 pr-3">Character</th><th className="py-2 pr-3">Real name</th><th className="py-2 pr-3">Notes</th><th className="py-2 w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.id} className="border-b last:border-0">
+                  <td className="py-2 pr-3">
+                    <Input defaultValue={m.number} disabled={!ws.canEdit} maxLength={20} className="h-8 w-20 font-mono" aria-label="Mic number"
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== m.number) void act(() => saveMic({ showId: ws.show.id, id: m.id, number: v })); }} />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Input defaultValue={m.character} disabled={!ws.canEdit} maxLength={120} className="h-8"
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== m.character) void act(() => saveMic({ showId: ws.show.id, id: m.id, character: v })); }} />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Input defaultValue={m.performer} disabled={!ws.canEdit} maxLength={120} className="h-8"
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== m.performer) void act(() => saveMic({ showId: ws.show.id, id: m.id, performer: v })); }} />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Input defaultValue={m.notes} disabled={!ws.canEdit} maxLength={400} placeholder="Spare, dodgy pack…" className="h-8"
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== m.notes) void act(() => saveMic({ showId: ws.show.id, id: m.id, notes: v })); }} />
+                  </td>
+                  <td className="py-2">
+                    {ws.isAdmin && (
+                      <button onClick={() => void act(() => saveMic({ showId: ws.show.id, id: m.id, remove: true }), 'Mic removed')}
+                        className="text-muted-foreground hover:text-red-500" aria-label={`Remove mic ${m.number}`}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {rows.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {nameOf(other)} has {ws.mics.filter((m) => m.cast === other).length} mic{ws.mics.filter((m) => m.cast === other).length === 1 ? '' : 's'} on its own list.
+        </p>
+      )}
     </Section>
   );
 }

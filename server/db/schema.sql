@@ -1083,6 +1083,29 @@ ALTER TABLE "CustomThemes" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT 
 CREATE INDEX IF NOT EXISTS "CustomThemes_member_idx" ON "CustomThemes" ("memberId");
 CREATE UNIQUE INDEX IF NOT EXISTS "CustomThemes_member_name_idx" ON "CustomThemes" ("memberId", lower("name"));
 
+-- Mic list: which radio mic a character wears, per cast. Two casts share the
+-- same numbers, so a row is (show, cast, number). The board prints the cast
+-- that is on; the workspace and the show panel swap them over.
+CREATE TABLE IF NOT EXISTS "ShowMics" (
+  "id"         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "show"       uuid NOT NULL,
+  "cast"       text NOT NULL DEFAULT 'A',
+  "number"     text NOT NULL DEFAULT '',
+  "character"  text NOT NULL DEFAULT '',
+  "performer"  text NOT NULL DEFAULT '',
+  "notes"      text NOT NULL DEFAULT '',
+  "position"   int NOT NULL DEFAULT 0,
+  "createdAt"  timestamptz NOT NULL DEFAULT now(),
+  "updatedAt"  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS "ShowMics_show_idx" ON "ShowMics" ("show");
+
+-- Which cast is on, and what the two casts are called. Kept on the show so the
+-- board, the workspace and the admin panel all read the same answer.
+ALTER TABLE "Shows" ADD COLUMN IF NOT EXISTS "castAName" text NOT NULL DEFAULT 'Cast X';
+ALTER TABLE "Shows" ADD COLUMN IF NOT EXISTS "castBName" text NOT NULL DEFAULT 'Cast Z';
+ALTER TABLE "Shows" ADD COLUMN IF NOT EXISTS "micCast"   text NOT NULL DEFAULT 'A';
+
 -- ---------------------------------------------------------------------------
 -- Nothing reads these any more: the feedback feature was removed, and the site
 -- has run without it since. Dropping them now so the schema matches the code.

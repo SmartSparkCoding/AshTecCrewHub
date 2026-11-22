@@ -68,6 +68,7 @@ const TABLES = {
   rehearsalNotes: { table: 'RehearsalNotes', arr: [] },
   sceneTimings: { table: 'SceneTimings', arr: [] },
   showScenes: { table: 'ShowScenes', arr: ['cast'] },
+  showMics: { table: 'ShowMics', arr: [] },
   rollCalls: { table: 'RollCalls', arr: [] },
   showSignoffs: { table: 'ShowSignoffs', arr: [] },
   cueCalls: { table: 'CueCalls', arr: [] },

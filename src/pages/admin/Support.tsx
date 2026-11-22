@@ -115,7 +115,7 @@ export default function Support() {
   // back to the tab" case immediately. Neither one toasts, so nothing nudges
   // the page except the people raising tickets showing up above.
   useEffect(() => {
-    const id = window.setInterval(load, 30_000);
+    const id = window.setInterval(load, 8000);
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
