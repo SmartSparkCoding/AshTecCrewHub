@@ -209,10 +209,9 @@ export default function MemberProfileDialog({
                       if (!evs.length) return <Empty text="No events yet." />;
                       return (
                         <ul className="space-y-2">
+                          {/* Title and date stack above a full-width picker on a
+                              phone, and sit in one row from sm up (ticket 1b2ed449). */}
                           {evs.map((e) => (
-                            {/* Ticket 1b2ed449: title and date stack above a
-                                full-width picker on a phone, and sit in one row
-                                from sm up. */}
                             <li key={e.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:flex-wrap sm:items-center">
                               <span className="min-w-0 font-medium text-sm">{e.title}</span>
                               <span className="text-xs text-muted-foreground sm:ml-auto sm:text-right">{fmtDate(e.date)}</span>
