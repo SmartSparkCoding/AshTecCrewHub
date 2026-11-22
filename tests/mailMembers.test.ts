@@ -108,5 +108,42 @@ test('names, not addresses, are what the tool asks for', () => {
   const s = source('server/mcp.ts');
   const block = s.slice(s.indexOf("name: 'email_members'"), s.indexOf("name: 'search'"));
   assert.match(block, /Names from the member list/);
-  assert.match(block, /do not pass addresses unless you were given one/);
+  assert.match(block, /do not pass them unless you were given one/);
+});
+
+/**
+ * "Send it to all teachers" (Jacob, same day, after the three-person version
+ * was merged). A group word has to mean the whole group, and the two traps are
+ * treating "staff" as absent and letting a group word silently resolve to
+ * nobody and reporting a happy send.
+ */
+test('group words are recognised, names are not', async () => {
+  const { groupOf } = await import('../server/mailMembers.js');
+  assert.equal(groupOf('all teachers'), 'staff');
+  assert.equal(groupOf('Teachers'), 'staff');
+  assert.equal(groupOf('staff'), 'staff');
+  assert.equal(groupOf('the crew'), 'crew');
+  assert.equal(groupOf('admins'), 'admins');
+  assert.equal(groupOf('everyone'), 'everyone');
+  assert.equal(groupOf('L Bourne'), null);
+  assert.equal(groupOf('Andrews'), null);
+});
+
+test('"all teachers" covers teachers and staff, via the app\'s own isStaff rule', () => {
+  const s = source('server/mailMembers.ts');
+  assert.match(s, /if \(group === 'staff'\) return isStaff\(m\)/, 'one definition of staff, not a second');
+  assert.match(s, /const groups = \[\.\.\.new Set\(wanted\.map\(groupOf\)/, 'groups are pulled out before matching');
+  assert.match(s, /const names = wanted\.filter\(\(w\) => !groupOf\(w\)\)/);
+});
+
+test('a group is deduped against the people named already', () => {
+  const s = source('server/mailMembers.ts');
+  assert.match(s, /if \(!to\.matched\.some\(\(p\) => p\.id === person\.id\)\) to\.matched\.push\(person\)/);
+});
+
+test('the tool offers the group words to the caller', () => {
+  const s = source('server/mcp.ts');
+  const block = s.slice(s.indexOf("name: 'email_members'"), s.indexOf("name: 'search'"));
+  assert.match(block, /all teachers/);
+  assert.match(block, /"crew", "admins", "everyone"/);
 });

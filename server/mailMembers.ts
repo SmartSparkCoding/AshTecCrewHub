@@ -20,6 +20,7 @@
  */
 import { zite } from '#db';
 import { Email, type EmailAttachment } from './email.js';
+import { isStaff } from '../src/lib/server.js';
 
 export type Person = { id: string; name: string; email: string; admin: boolean };
 
@@ -56,6 +57,37 @@ const toPerson = (m: any): Person => ({
 });
 
 const ofAge = (m: any) => m.memberType !== 'AI Agent' && !!String(m.schoolEmail ?? '').trim();
+
+/**
+ * Group words, so "all teachers" is one request rather than a list an agent has
+ * to remember to complete (Jacob, Nov 22: the register went to the whole staff
+ * body, not the four teachers standing in the room). Returns null when the word
+ * is a person's name, which is the common case.
+ */
+export type Group = 'staff' | 'crew' | 'admins' | 'everyone';
+
+export function groupOf(raw: string): Group | null {
+  const word = plain(raw)
+    .replace(/^(all|every|the)\s+/, '')
+    .split(' ')
+    .pop()!
+    .replace(/s$/, '');
+  if (word === 'teacher' || word === 'staff' || word === 'staf') return 'staff';
+  if (word === 'crew') return 'crew';
+  if (word === 'admin' || word === 'maintainer') return 'admins';
+  if (word === 'everyone' || word === 'everybody' || word === 'all') return 'everyone';
+  return null;
+}
+
+function peopleInGroup(group: Group, members: any[]): Person[] {
+  const pick = members.filter((m) => {
+    if (group === 'staff') return isStaff(m);
+    if (group === 'crew') return !isStaff(m);
+    if (group === 'admins') return m.isAdmin === true;
+    return true;
+  });
+  return pick.map(toPerson).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /** All crew records once, so a single send does one query, not one per name. */
 export async function everyone(): Promise<any[]> {
@@ -143,7 +175,17 @@ export async function sendMembers(input: {
   if (!wanted.length) throw new Error('Name at least one person to send it to.');
 
   const pool = await everyone();
-  const to = await matchPeople(wanted, pool);
+
+  // "all teachers" is a group word, not a person to look up.
+  const groups = [...new Set(wanted.map(groupOf).filter((g): g is Group => !!g))];
+  const names = wanted.filter((w) => !groupOf(w));
+  const to = await matchPeople(names, pool);
+  for (const group of groups) {
+    for (const person of peopleInGroup(group, pool)) {
+      if (!to.matched.some((p) => p.id === person.id)) to.matched.push(person);
+    }
+  }
+  to.matched.sort((a, b) => a.name.localeCompare(b.name));
   const ccWanted = (input.cc ?? []).map((x) => String(x ?? '').trim()).filter(Boolean);
   const cc = await matchPeople(ccWanted, pool);
   const admins = input.ccAdmins ? await adminRecipients(to.matched, pool) : [];

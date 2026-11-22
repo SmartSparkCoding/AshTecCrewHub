@@ -829,14 +829,15 @@ const TOOLS = [
   {
     name: 'email_members',
     description:
-      'Email named people through the hub\'s own mail server, with an optional file attached. Use it when a few people asked for something by email (a register, a document) and copy the admins with ccAdmins. Names are matched against the member list and the addresses come from the platform, so do not pass addresses unless you were given one. Call it with dryRun true first: that returns who it resolved and sends nothing. An unknown name or a name that matches two people sends nothing at all.',
+      'Email named people through the hub\'s own mail server, with an optional file attached. Use it when people asked for something by email (a register, a document) and copy the admins with ccAdmins. `to` takes names from the member list, or a group word: "all teachers" (every teacher and staff member), "crew", "admins", "everyone". Addresses come from the platform, so do not pass them unless you were given one. Call it with dryRun true first: that returns who it resolved and sends nothing. An unknown name, a name matching two people, or a group that resolves to nobody sends nothing at all.',
     inputSchema: {
       type: 'object',
       properties: {
         to: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Names from the member list, e.g. "L Bourne". An address works too.',
+          description:
+            'Names from the member list, e.g. "L Bourne", or a group: "all teachers", "crew", "admins", "everyone". An address works too.',
         },
         subject: str('Subject line.'),
         body: str('The email, plain text. Markdown: **bold**, _italic_, - list, [label](link).'),
