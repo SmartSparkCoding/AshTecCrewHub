@@ -113,7 +113,7 @@ export default function MemberProfileDialog({
           </div>
         ) : (
           <>
-            <DialogHeader>
+            <DialogHeader className="text-left">
               <div className="flex items-start gap-3">
                 <MemberAvatar
                   url={detail.member.avatarUrl}
@@ -122,16 +122,19 @@ export default function MemberProfileDialog({
                   size="lg"
                 />
                 <div className="min-w-0 flex-1">
-                  <DialogTitle className="flex flex-wrap items-center gap-2">
-                    {detail.member.firstName} {detail.member.lastName}
-                    {detail.member.isAdmin && <Shield className="h-4 w-4 text-primary" />}
-                    {detail.member.isMaintainer && <Wrench className="h-4 w-4 text-primary" />}
+                  <DialogTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {/* Ticket 1b2ed449: a bare text node in a flex row cannot
+                        shrink, so a long name pushed the sheet wider than the phone. */}
+                    <span className="min-w-0 break-words">{detail.member.firstName} {detail.member.lastName}</span>
+                    {detail.member.isAdmin && <Shield className="h-4 w-4 shrink-0 text-primary" />}
+                    {detail.member.isMaintainer && <Wrench className="h-4 w-4 shrink-0 text-primary" />}
                     {detail.member.isPreview && <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">Preview</Badge>}
                     {detail.isStaff && <Badge variant="outline">Staff</Badge>}
                     <Badge variant="outline">{detail.member.memberType}</Badge>
                     {detail.member.year && <span className="text-sm font-normal text-muted-foreground">{detail.member.year}</span>}
                   </DialogTitle>
-                  <p className="text-muted-foreground">@{detail.member.shortUsername} · {detail.member.email}</p>
+                  <p className="text-left break-words text-muted-foreground">@{detail.member.shortUsername}</p>
+                  <p className="text-left break-words text-muted-foreground">{detail.member.email}</p>
                   {(detail.member.statusEmoji || detail.member.statusText) && (
                     <p className="text-sm mt-0.5">
                       {detail.member.statusEmoji} {detail.member.statusText}
@@ -206,16 +209,18 @@ export default function MemberProfileDialog({
                       if (!evs.length) return <Empty text="No events yet." />;
                       return (
                         <ul className="space-y-2">
+                          {/* Title and date stack above a full-width picker on a
+                              phone, and sit in one row from sm up (ticket 1b2ed449). */}
                           {evs.map((e) => (
-                            <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
-                              <span className="font-medium text-sm">{e.title}</span>
-                              <span className="text-xs text-muted-foreground">{fmtDate(e.date)}</span>
+                            <li key={e.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                              <span className="min-w-0 font-medium text-sm">{e.title}</span>
+                              <span className="text-xs text-muted-foreground sm:ml-auto sm:text-right">{fmtDate(e.date)}</span>
                               <Select
                                 value={e.status ?? ''}
                                 onValueChange={(v) => changeAtt(e.id, v as 'Expected Arrival' | 'Maybe' | 'Not Attending')}
                                 disabled={busyEv === e.id}
                               >
-                                <SelectTrigger className="ml-auto h-8 w-[170px]"><SelectValue placeholder="No reply" /></SelectTrigger>
+                                <SelectTrigger className="h-9 w-full sm:ml-auto sm:h-8 sm:w-[170px]"><SelectValue placeholder="No reply" /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="Expected Arrival">Expected Arrival</SelectItem>
                                   <SelectItem value="Maybe">Maybe</SelectItem>
@@ -239,7 +244,8 @@ export default function MemberProfileDialog({
                       <Badge variant="outline" className={PRES_STYLE[c.state ?? ''] ?? ''}>{c.state ?? '—'}</Badge>
                       <span className="font-medium">{c.sessionTitle}</span>
                       {c.date && <span className="text-xs text-muted-foreground">{fmtDate(c.date)}</span>}
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      {/* Ticket 1b2ed449: the timestamp drops to its own line on a phone. */}
+                      <span className="w-full text-xs text-muted-foreground sm:ml-auto sm:w-auto">
                         {dt(c.signedInAt)}{c.signedOutAt ? ` → ${dt(c.signedOutAt)}` : ''}
                         {c.reasonLabel ? ` · ${c.reasonLabel}` : ''}
                       </span>
@@ -263,10 +269,10 @@ export default function MemberProfileDialog({
                 {detail.emails.length === 0 && <Empty text="Nothing sent yet." />}
                 <ul className="space-y-1">
                   {detail.emails.map((e, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <span className="font-medium truncate">{e.subject}</span>
+                    <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                      <span className="min-w-0 font-medium truncate">{e.subject}</span>
                       {e.purpose && <Badge variant="secondary" className="shrink-0">{e.purpose}</Badge>}
-                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{dt(e.sentAt)}</span>
+                      <span className="text-xs text-muted-foreground sm:ml-auto">{dt(e.sentAt)}</span>
                     </li>
                   ))}
                 </ul>
@@ -277,8 +283,8 @@ export default function MemberProfileDialog({
                   {detail.tickets.length === 0 && <Empty text="None." />}
                   <ul className="space-y-1">
                     {detail.tickets.map((t, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <span className="font-medium truncate">{t.subject}</span>
+                      <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        <span className="min-w-0 font-medium truncate">{t.subject}</span>
                         <Badge variant="outline" className="shrink-0">{t.status}</Badge>
                       </li>
                     ))}

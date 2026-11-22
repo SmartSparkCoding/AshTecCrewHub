@@ -565,10 +565,12 @@ function Shell() {
                 onToggle={toggleThemeMode}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               />
+              {/* Ticket 1b2ed449: the sparkle sat 14px past the px-3 header
+                  padding and gave every page 2px of sideways scroll on a phone. */}
               {specialNote ? (
-                <GlowNote text={specialNote} align="right">
+                <GlowNote text={specialNote} align="right" className="shrink-0">
                   <span className="glow-pulse text-sm font-semibold text-amber-300">{me.firstName}</span>
-                  <Sparkles className="absolute -right-3.5 -top-2 h-3.5 w-3.5 text-amber-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)]" />
+                  <Sparkles className="absolute -right-1.5 -top-1.5 h-3.5 w-3.5 text-amber-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)]" />
                 </GlowNote>
               ) : null}
             </div>
