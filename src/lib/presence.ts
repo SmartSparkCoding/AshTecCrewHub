@@ -363,6 +363,140 @@ export async function seedPresenceFromRegister(
   return seeded;
 }
 
+/**
+ * Which of the two rows is telling the truth when they disagree.
+ *
+ * A write-time mirror can only keep rows in step that it writes itself. It can
+ * never repair a pair that drifted while the mirror did not exist, and there are
+ * two other ways to drift anyway: an RSVP edit that rewrites the attendance row
+ * without a colour, and anybody touching the database by hand. So the read
+ * paths ask this before rendering, and one side is copied onto the other.
+ *
+ * Whichever row was written last wins, because that is the last thing a person
+ * actually said. A missing row never wins: it is a gap, not a decision, so the
+ * side that has something fills it in.
+ *
+ * Ticket: "im signed out on check in, but my register says im here (green)" -
+ * fifteen ticks made at ten past ten, hours before the mirror was deployed, and
+ * nothing to reunite them afterwards.
+ */
+export function mirrorWinner(
+  att?: { registerState?: string; updatedAt?: string } | null,
+  live?: { state?: string; updatedAt?: string } | null,
+): 'register' | 'presence' | 'none' {
+  const colour = (att?.registerState ?? '') as RegisterState;
+  const state = live?.state ?? '';
+  if (!colour && !state) return 'none';
+  // Already saying the same thing, which includes both being blank.
+  if (registerStateFor(state) === colour) return 'none';
+  if (!state) return 'register';
+  if (!colour) return 'presence';
+  return (att?.updatedAt ?? '') >= (live?.updatedAt ?? '') ? 'register' : 'presence';
+}
+
+/** Copies one reconciled pair across, in the direction the winner says. */
+async function applyMirrorWinner(opts: {
+  subEventId: string;
+  memberId: string;
+  att?: { registerState?: string; reason?: string; returnAt?: string | null; updatedAt?: string } | null;
+  live?: {
+    state?: string;
+    reasonLabel?: string;
+    reason?: string;
+    expectedBackAt?: string | null;
+    updatedAt?: string;
+  } | null;
+  by: string;
+}): Promise<'register' | 'presence' | 'none'> {
+  const { subEventId, memberId, att, live, by } = opts;
+  const winner = mirrorWinner(att, live);
+  if (winner === 'register') {
+    // The register was touched last, so the roster catches up with it. Sending
+    // it through setMemberState rather than writing presence by hand keeps one
+    // writer per direction, and it also stamps the change on the timeline.
+    await setMemberState({
+      subEventId,
+      memberId,
+      state: (att?.registerState ?? '') as RegisterState,
+      reason: att?.reason ?? '',
+      returnAt: att?.returnAt ?? null,
+      by,
+    });
+  } else if (winner === 'presence') {
+    await writeRegister({
+      subEventId,
+      memberId,
+      state: registerStateFor(live?.state),
+      reason: registerReason(live?.reasonLabel, live?.reason),
+      returnAt: live?.expectedBackAt ?? null,
+      by,
+    });
+  }
+  return winner;
+}
+
+/** Reconciles the caller's own two rows. Used by the Check-in page read. */
+export async function reconcileMember(
+  session: { id: string; subEvent?: string | string[] | null },
+  memberId: string,
+  by: string,
+): Promise<'register' | 'presence' | 'none'> {
+  const subEventId = sessionSubEventId(session);
+  if (!subEventId || !memberId) return 'none';
+
+  const { records } = await zite.attendance.findAll({ filters: { subEvent: subEventId }, limit: 2000 });
+  const att = records.find((a) => ids(a.member)[0] === memberId) as unknown as
+    | { registerState?: string; reason?: string; returnAt?: string | null; updatedAt?: string }
+    | undefined;
+  const live = await findPresence(session.id, memberId);
+  return applyMirrorWinner({ subEventId, memberId, att, live: live as never, by });
+}
+
+/**
+ * Reconciles everybody for the open session in one pass.
+ *
+ * The roster is where an admin notices that the room and the register disagree,
+ * so it is the cheapest place to fix the whole set rather than making each
+ * member open Check-in first.
+ */
+export async function reconcileSession(
+  session: { id: string; subEvent?: string | string[] | null },
+  by: string,
+): Promise<number> {
+  const subEventId = sessionSubEventId(session);
+  if (!subEventId) return 0;
+
+  const [att, pres] = await Promise.all([
+    zite.attendance.findAll({ filters: { subEvent: subEventId }, limit: 2000 }),
+    zite.venuePresence.findAll({ filters: { session: session.id }, limit: 2000 }),
+  ]);
+
+  const liveBy = new Map<string, unknown>();
+  for (const row of pres.records) {
+    const id = ids(row.member)[0];
+    if (id) liveBy.set(id, row);
+  }
+  const attBy = new Map<string, unknown>();
+  for (const row of att.records) {
+    const id = ids(row.member)[0];
+    if (id) attBy.set(id, row);
+  }
+
+  const everyone = new Set([...attBy.keys(), ...liveBy.keys()]);
+  let fixed = 0;
+  for (const memberId of everyone) {
+    const winner = await applyMirrorWinner({
+      subEventId,
+      memberId,
+      att: attBy.get(memberId) as never,
+      live: liveBy.get(memberId) as never,
+      by,
+    });
+    if (winner !== 'none') fixed++;
+  }
+  return fixed;
+}
+
 /** The member ids behind a set of presence rows, for name lookups. */
 export const memberIdsOf = (rows: { member?: string | string[] | null }[]) =>
   [...new Set(rows.flatMap((r) => ids(r.member)))];

@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
-import { alreadyInRoom, presenceStateFor, registerReason, registerStateFor } from '../src/lib/presence';
+import {
+  alreadyInRoom,
+  mirrorWinner,
+  presenceStateFor,
+  registerReason,
+  registerStateFor,
+} from '../src/lib/presence';
 
 /**
  * Ticket: "for people I have ticked green on the register, they can still
@@ -146,4 +152,59 @@ test('the page does not offer a sign-in button the register has settled', () => 
   // register note ("the register says you are away: Lunch") and again as the
   // old reason label underneath it.
   assert.match(source, /mine\.reasonLabel && !registerNote &&/);
+});
+
+/**
+ * Ticket: "at the moment, im signed out on check in, but my register says im
+ * here (green) - why? they should mirror each other."
+ *
+ * The writes were already mirroring. The rows were written before the mirror
+ * existed, and a write-time mirror cannot repair a pair it never wrote, so the
+ * read paths now pick a winner instead of rendering the argument.
+ */
+test('the later write wins, and a missing row never beats a real one', () => {
+  // Agreement, including "nobody has said anything" on both sides.
+  assert.equal(mirrorWinner(undefined, undefined), 'none');
+  assert.equal(mirrorWinner({ registerState: '' }, { state: 'Not at Venue' }), 'none');
+  assert.equal(mirrorWinner({ registerState: 'green' }, { state: 'On Site' }), 'none');
+  assert.equal(mirrorWinner({ registerState: 'yellow' }, { state: 'Expected Back' }), 'none');
+  assert.equal(mirrorWinner({ registerState: 'red' }, { state: 'Off Site' }), 'none');
+
+  // The reported bug: a green tick from this morning, nothing on the roster.
+  assert.equal(mirrorWinner({ registerState: 'green' }, undefined), 'register');
+  assert.equal(mirrorWinner({ registerState: 'green' }, { state: '' }), 'register');
+
+  // The other way round: they signed in, the register has no row yet.
+  assert.equal(mirrorWinner(undefined, { state: 'On Site' }), 'presence');
+  assert.equal(mirrorWinner({ registerState: '' }, { state: 'Off Site' }), 'presence');
+});
+
+test('when both rows exist the newest one wins', () => {
+  const att = { registerState: 'green', updatedAt: '2026-11-22T10:15:00.000Z' };
+  const older = { state: 'Off Site', updatedAt: '2026-11-22T10:05:00.000Z' };
+  const newer = { state: 'Off Site', updatedAt: '2026-11-22T11:50:00.000Z' };
+
+  assert.equal(mirrorWinner(att, older), 'register', 'ticked green after they signed out');
+  assert.equal(mirrorWinner(att, newer), 'presence', 'signed out after the tick');
+
+  // A tie is not worth arguing about; the register is what a human tapped.
+  assert.equal(mirrorWinner(att, { ...older, updatedAt: att.updatedAt }), 'register');
+});
+
+test('the read paths reconcile before they render', () => {
+  const mine = readFileSync('src/api/getPresence.ts', 'utf8');
+  assert.match(mine, /await reconcileMember\(/, 'a member opening Check-in heals their own pair');
+  assert.match(mine, /reconcileMember\(\{ id: String\(session\.id\)/);
+
+  const roster = readFileSync('src/api/adminGetPresence.ts', 'utf8');
+  assert.match(roster, /if \(canManage\) await reconcileSession\(/, 'the roster heals the whole set');
+  assert.match(roster, /reconcileSession\(\{ id: String\(session\.id\)/);
+
+  const lib = readFileSync('src/lib/presence.ts', 'utf8');
+  // One writer per direction, so reconciling cannot invent a third way to set
+  // a state that later drifts from the other side.
+  assert.match(lib, /export async function reconcileMember/);
+  assert.match(lib, /export async function reconcileSession/);
+  assert.match(lib, /await setMemberState\(\{\n      subEventId,/);
+  assert.match(lib, /await writeRegister\(\{\n      subEventId,/);
 });
