@@ -7,7 +7,7 @@
 // presence read would drag RSVP state along with it, and the two disagree
 // constantly: someone can be signed out of the venue while marked as attending.
 import { zite } from '#db';
-import { ids } from './server';
+import { ids, upsertAttendance } from './server';
 
 /** Where a member stands relative to the current session. */
 export const PRESENCE_STATES = ['On Site', 'Off Site', 'Expected Back', 'Not at Venue'] as const;
@@ -168,23 +168,199 @@ export async function registerFor(subEventId: string, memberId: string): Promise
 export const alreadyInRoom = (register: RegisterRow, state?: string | null) =>
   register.state === 'green' && state !== 'Off Site';
 
+/** The colours the school-style register uses, plus "nobody has said". */
+export type RegisterState = '' | 'green' | 'yellow' | 'red';
+
 /**
- * A green tick on the register already answers the question a pending sign-in
- * code is asking, so that request is spent instead of left open on the member's
- * phone. Without this the old QR keeps working after an admin has marked them
- * in by hand, and approving it a second time is noise on the timeline.
+ * The register colour that says the same thing as a presence state.
  *
- * Only sign-in requests are cleared. A pending sign-out is a different question
- * ("may I leave?") that a green tick says nothing about.
+ * The register and check-in are not two records of two facts. They are one fact
+ * written in two places: green is in the room, yellow is away and coming back,
+ * red is not in. Every write path goes through this mapping so the two can
+ * never disagree, in either direction, no matter which one an admin touched.
  */
-export async function clearPendingSignIn(sessionId: string, memberId: string, by: string) {
-  const row = await findPresence(sessionId, memberId);
-  if (!row || row.pendingAction !== 'Sign In') return false;
-  await zite.venuePresence.update({
-    id: row.id,
-    record: { pendingAction: null, approvalToken: '', updatedBy: by } as never,
+export const registerStateFor = (state?: string | null): RegisterState =>
+  state === 'On Site' ? 'green'
+  : state === 'Expected Back' ? 'yellow'
+  : state === 'Off Site' ? 'red'
+  : '';
+
+/** The same mapping read the other way, so a colour can paint the roster. */
+export const presenceStateFor = (register?: string | null): PresenceState =>
+  register === 'green' ? 'On Site'
+  : register === 'yellow' ? 'Expected Back'
+  : register === 'red' ? 'Off Site'
+  : 'Not at Venue';
+
+/**
+ * The words a register row carries when the member did not type their own.
+ * A sign-out is a reason in itself: picking "Lunch" and adding nothing still
+ * has to produce a register row that explains the colour.
+ */
+export const registerReason = (
+  label?: string | null,
+  reason?: string | null,
+  fallback = 'Signed out',
+) => (reason ?? '').trim() || (label ?? '').trim() || fallback;
+
+/**
+ * Writes one member's colour on the register for one event, and nothing else.
+ *
+ * Used by the check-in side, which has already written its own presence row and
+ * only needs the register to catch up. Anything that starts from the register
+ * uses setMemberState below, which does both.
+ */
+export async function writeRegister(opts: {
+  subEventId: string;
+  memberId: string;
+  state: RegisterState;
+  reason?: string;
+  returnAt?: string | null;
+  by: string;
+}): Promise<void> {
+  const { subEventId, memberId, state } = opts;
+  if (!subEventId || !memberId) return;
+
+  if (!state) {
+    // Cleared: no row at all, so the register reads as "nobody has said"
+    // instead of as an absence somebody argued for.
+    const { records } = await zite.attendance.findAll({ filters: { subEvent: subEventId }, limit: 2000 });
+    const row = records.find((a) => ids(a.member)[0] === memberId);
+    if (row) await zite.attendance.delete({ id: row.id });
+    return;
+  }
+
+  await upsertAttendance([{
+    memberId,
+    subEventId,
+    status: state === 'green' ? 'Expected Arrival' : 'Not Attending',
+    reason: state === 'green' ? '' : opts.reason ?? '',
+    registerState: state,
+    returnAt: state === 'yellow' ? opts.returnAt ?? null : null,
+    byAdmin: true,
+  }]);
+}
+
+/** The open session, but only if it is for this event. */
+export async function sessionForSubEvent(subEventId: string) {
+  const session = await activeSession();
+  if (!session || sessionSubEventId(session) !== subEventId) return undefined;
+  return session;
+}
+
+/**
+ * Sets one member's state in both places at once: the register row and, when a
+ * session is open for that event, the presence row.
+ *
+ * This is the only writer for the register side of the mirror. An admin marking
+ * somebody green therefore signs them in, marking them away puts them on the
+ * roster as away until they are back, and clearing the tick puts them at "not
+ * at venue" rather than leaving a state behind that the register has forgotten.
+ */
+export async function setMemberState(opts: {
+  subEventId: string;
+  memberId: string;
+  state: RegisterState;
+  reason?: string;
+  returnAt?: string | null;
+  by: string;
+}): Promise<{ state: RegisterState; presence: PresenceState | null }> {
+  await writeRegister(opts);
+
+  const session = await sessionForSubEvent(opts.subEventId);
+  if (!session) return { state: opts.state, presence: null };
+
+  const key = presenceKey(session.id, opts.memberId);
+  const existing = await zite.venuePresence.findOne({ filters: { presenceKey: key } });
+  const now = new Date().toISOString();
+  const state = presenceStateFor(opts.state);
+
+  const record = {
+    presenceKey: key,
+    session: session.id,
+    member: opts.memberId,
+    state,
+    // The register's reason is free text, so it lands in `reason`, which is the
+    // field the roster already shows. reasonLabel stays empty rather than being
+    // guessed from a picklist that may not contain what was typed.
+    reasonLabel: '',
+    reason: opts.state === 'green' ? '' : opts.reason ?? '',
+    comingBack: opts.state === 'yellow',
+    expectedBackAt: opts.state === 'yellow' ? opts.returnAt ?? null : null,
+    // A repeated green does not restart the clock on a sign-in that already
+    // happened; anything that is not green ends it.
+    signedInAt: opts.state === 'green'
+      ? (existing?.state === 'On Site' && existing?.signedInAt ? existing.signedInAt : now)
+      : null,
+    signedOutAt: opts.state === 'green' || !opts.state ? null : now,
+    // Whatever the member was asking for has been answered by hand.
+    approvalToken: '',
+    pendingAction: null,
+    updatedBy: opts.by,
+  };
+
+  if (existing) await zite.venuePresence.update({ id: existing.id, record: record as never });
+  else await zite.venuePresence.create({ record: record as never });
+
+  await logPresenceEvent({
+    session: session.id,
+    member: opts.memberId,
+    action: opts.state ? `Register ${opts.state}` : 'Register cleared',
+    reason: opts.reason ?? '',
+    comingBack: opts.state === 'yellow',
+    expectedBackAt: record.expectedBackAt,
+    at: now,
+    by: opts.by,
   });
-  return true;
+
+  return { state: opts.state, presence: state };
+}
+
+/**
+ * Opens a session with the register already on the roster.
+ *
+ * The other half of the mirror: if an admin ticked people in before check-in was
+ * opened, those ticks are people in the room, so the roster starts with them
+ * there instead of showing everybody as "not at venue" until they scan.
+ */
+export async function seedPresenceFromRegister(
+  session: { id: string; subEvent?: string | string[] | null },
+  by: string,
+): Promise<number> {
+  const subEventId = sessionSubEventId(session);
+  if (!subEventId) return 0;
+  const { records } = await zite.attendance.findAll({ filters: { subEvent: subEventId }, limit: 2000 });
+  const now = new Date().toISOString();
+  let seeded = 0;
+
+  for (const row of records) {
+    const state = String(row.registerState ?? '') as RegisterState;
+    if (state !== 'green' && state !== 'yellow' && state !== 'red') continue;
+    const memberId = ids(row.member)[0];
+    if (!memberId) continue;
+
+    const presence = presenceStateFor(state);
+    await zite.venuePresence.create({
+      record: {
+        presenceKey: presenceKey(session.id, memberId),
+        session: session.id,
+        member: memberId,
+        state: presence,
+        reasonLabel: '',
+        reason: state === 'green' ? '' : String(row.reason ?? ''),
+        comingBack: state === 'yellow',
+        expectedBackAt: state === 'yellow' ? (row.returnAt as string | null) ?? null : null,
+        signedInAt: state === 'green' ? now : null,
+        signedOutAt: state === 'green' ? null : now,
+        approvalToken: '',
+        pendingAction: null,
+        updatedBy: by,
+      } as never,
+    });
+    seeded++;
+  }
+
+  return seeded;
 }
 
 /** The member ids behind a set of presence rows, for name lookups. */

@@ -1,8 +1,17 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
-import { requireAdmin, upsertAttendance } from '../lib/server';
-import { activeSession, findPresenceByToken, logPresenceEvent, one, sessionSubEventId } from '../lib/presence';
+import { requireAdmin } from '../lib/server';
+import {
+  activeSession,
+  findPresenceByToken,
+  logPresenceEvent,
+  one,
+  registerReason,
+  registerStateFor,
+  sessionSubEventId,
+  writeRegister,
+} from '../lib/presence';
 
 /**
  * One scan, one outcome (feedback round 3).
@@ -10,7 +19,11 @@ import { activeSession, findPresenceByToken, logPresenceEvent, one, sessionSubEv
  * The venue flow used to make an admin scan a code, land on the /a/:token page
  * and press approve before the member counted as in. At a door that is two
  * taps too many, so this endpoint does the whole thing: approve the pending
- * sign-in AND tick them off the register for the event being checked in.
+ * request AND write the register for the event being checked in.
+ *
+ * Both directions, because the register and check-in are one fact written in two
+ * places: letting somebody in is green, letting them out is yellow when they are
+ * coming back and red when they are not, with the reason they gave.
  *
  * It only ever approves. A code is a request to be let in or out, and declining
  * needs a reason, so declining stays on the /a/:token page where the detail is.
@@ -69,19 +82,16 @@ export default createEndpoint({
       by: me.id,
     });
 
-    // Being let in is also being on the register for the event at the door.
-    // Stepping out is not, so signing out never unticks anybody.
-    if (action === 'Sign In' && memberId) {
-      await upsertAttendance([{
-        memberId,
+    // One scan, both records. A full id, never the first character of one.
+    if (memberId) {
+      await writeRegister({
         subEventId: input.subEventId,
-        status: 'Expected Arrival',
-        byAdmin: true,
-        // Stored, not inferred. The register used to work out "green" from the
-        // status, which left the colour blank on any row an admin had once
-        // marked away, so a door check-in looked like it had not landed.
-        registerState: 'green',
-      }]);
+        memberId,
+        state: registerStateFor(approved.state),
+        reason: action === 'Sign In' ? '' : registerReason(row.reasonLabel, row.reason),
+        returnAt: row.expectedBackAt ?? null,
+        by: me.id,
+      });
     }
 
     return { memberId, memberName, action, state: (approved.state as string) ?? null };

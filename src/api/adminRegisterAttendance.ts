@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
-import { zite } from '#db';
-import { requireAdmin, ids, upsertAttendance } from '../lib/server';
-import { activeSession, clearPendingSignIn, sessionSubEventId } from '../lib/presence';
+import { requireAdmin } from '../lib/server';
+import { setMemberState } from '../lib/presence';
 
 /**
  * Ticket 57ce12eb, extended for the school-style register.
@@ -22,6 +21,13 @@ import { activeSession, clearPendingSignIn, sessionSubEventId } from '../lib/pre
  *
  * Club sessions are not part of a show, so the automatic attendance sync never
  * touches them and these rows are the only record of the register.
+ *
+ * The register and check-in are one fact written in two places, so this does not
+ * write a register row on its own: setMemberState writes the colour and the
+ * presence state together. Green signs the member in, yellow puts them on the
+ * roster as away until they are back, red puts them off site, and clearing the
+ * tick clears the presence side too instead of leaving a state the register has
+ * forgotten about.
  */
 const STATE = z.enum(['green', 'yellow', 'red', '']);
 
@@ -54,35 +60,17 @@ export default createEndpoint({
       returnAt = new Date(input.returnAt).toISOString();
     }
 
-    const existing = (await zite.attendance.findAll({ filters: { subEvent: input.subEventId }, limit: 2000 })).records
-      .find((a) => ids(a.member)[0] === input.memberId);
-
-    // Same colour tapped again: clear the row entirely, so nobody is left
-    // marked as away when they are standing right there.
-    if (!state) {
-      if (existing) await zite.attendance.delete({ id: existing.id });
-      return { ok: true, state };
-    }
-
-    await upsertAttendance([{
-      memberId: input.memberId,
+    // Both sides in one write. Tapping the same colour again clears the row, so
+    // an empty state is a clear here and not a special case for the caller.
+    await setMemberState({
       subEventId: input.subEventId,
-      status: state === 'green' ? 'Expected Arrival' : 'Not Attending',
-      reason: state === 'green' ? '' : reason,
-      registerState: state,
+      memberId: input.memberId,
+      state,
+      reason,
       returnAt,
-      byAdmin: true,
-    }]);
+      by: admin.id,
+    });
 
-    // A green tick settles the question a pending sign-in code is asking, so
-    // that code is spent rather than left live on the member's phone. Otherwise
-    // they stand there holding a QR for something an admin has already done, and
-    // approving it later puts a duplicate approval on the timeline.
-    if (state === 'green') {
-      const open = await activeSession();
-      if (open && sessionSubEventId(open) === input.subEventId)
-        await clearPendingSignIn(open.id, input.memberId, admin.id);
-    }
     return { ok: true, state };
   },
 });
