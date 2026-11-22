@@ -36,6 +36,18 @@ export function newToken(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * The event a check-in session is for, as a plain id.
+ *
+ * Ticket: QR approval 500'd with `invalid input syntax for type uuid: "e"`.
+ * The session's link column is typed `string | string[]` and came back as a
+ * string, so `session.subEvent?.[0]` returned its FIRST CHARACTER - a one
+ * letter "uuid" that Postgres refused. Anything that wants the id goes through
+ * here, so the index-vs-string mistake can only live in one place.
+ */
+export const sessionSubEventId = (session?: { subEvent?: string | string[] | null }) =>
+  one(session?.subEvent) ?? '';
+
 /** The one session that may be open at a time, or undefined. */
 export async function activeSession() {
   const { records } = await zite.presenceSessions.findAll({
