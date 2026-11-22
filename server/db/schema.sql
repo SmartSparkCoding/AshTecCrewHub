@@ -1095,10 +1095,13 @@ CREATE TABLE IF NOT EXISTS "ShowMics" (
   "performer"  text NOT NULL DEFAULT '',
   "notes"      text NOT NULL DEFAULT '',
   "position"   int NOT NULL DEFAULT 0,
+  "createdBy"  text NOT NULL DEFAULT '',
   "createdAt"  timestamptz NOT NULL DEFAULT now(),
   "updatedAt"  timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS "ShowMics_show_idx" ON "ShowMics" ("show");
+-- The table shipped without createdBy, and adding a mic blew up on it.
+ALTER TABLE "ShowMics" ADD COLUMN IF NOT EXISTS "createdBy" text NOT NULL DEFAULT '';
 
 -- Which cast is on, and what the two casts are called. Kept on the show so the
 -- board, the workspace and the admin panel all read the same answer.
