@@ -24,11 +24,21 @@ export type EmailBlock =
   | { type: 'text'; content: string }
   | { type: 'button'; label: string; href: string };
 
+export interface EmailAttachment {
+  filename: string;
+  /** Base64 of the file itself, no data: prefix. */
+  base64: string;
+}
+
 export interface SendEmailParams {
   to?: string | string[];
   subject: string;
   replyTo?: string;
   body: EmailBlock[];
+  /** Added for register emails (Nov 22): the people copied in, not the audience. */
+  cc?: string | string[];
+  /** A file to attach, e.g. a register PDF. Small: the whole body is base64 in JSON. */
+  attachments?: EmailAttachment[];
   /** Reserved by the original SDK; the app never sets it. */
   direction?: 'ltr' | 'rtl';
 }
@@ -238,8 +248,18 @@ export const Email = {
         if (block.type === 'text') console.warn(`[email] ${devId} text: ${block.content}`);
         else console.warn(`[email] ${devId} button: ${block.label} -> ${block.href}`);
       }
+      if ((params.attachments ?? []).length) {
+        console.warn(`[email] ${devId} attachments: ${params.attachments!.map((a) => a.filename).join(', ')}`);
+      }
       return { success: true, messageId: devId };
     }
+
+    const cc = (Array.isArray(params.cc) ? params.cc : params.cc ? [params.cc] : []).filter(
+      (x): x is string => typeof x === 'string' && x.includes('@')
+    );
+    const attachments = (params.attachments ?? [])
+      .filter((a) => a && a.filename && a.base64)
+      .map((a) => ({ filename: a.filename, content: a.base64, encoding: 'base64' as const }));
 
     const info = await getTransporter().sendMail({
       from: FROM,
@@ -247,6 +267,8 @@ export const Email = {
       subject: params.subject,
       html,
       text,
+      ...(cc.length ? { cc: cc.join(', ') } : {}),
+      ...(attachments.length ? { attachments } : {}),
       ...(params.replyTo ? { replyTo: params.replyTo } : {}),
     });
     return { success: true, messageId: info.messageId };

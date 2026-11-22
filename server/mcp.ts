@@ -29,12 +29,17 @@
  * closing one. Not done on purpose: member create/delete and settings. Those are
  * one careless tool call away from breaking the app for everyone.
  *
- * `email_crew` is the one exception, added on request (Jacob, Nov 22) so a
- * crewwide note can be sent without looping a browser a hundred times. It is
- * built to be boring: staff, preview accounts and AI agent accounts are dropped
- * by the same rule the app uses, `exclude` leaves named people out, every send
- * is written to the admin email log, and `dryRun` shows the recipient list
- * without sending anything.
+ * Mail is the one exception, added on request (Jacob, Nov 22) so a note can be
+ * sent without looping a browser a hundred times. `email_crew` writes to the
+ * whole crew and is built to be boring: staff, preview accounts and AI agent
+ * accounts are dropped by the same rule the app uses, `exclude` leaves named
+ * people out, and `dryRun` shows the list without sending.
+ *
+ * `email_members` (added the same day, for a register that three staff had
+ * asked for) is the narrow one: you name people, the addresses come from
+ * CrewMembers rather than from the model, an unknown or doubled name sends
+ * nothing, and a file can be attached. Both write every recipient to the admin
+ * email log.
  */
 
 import type { Express, Request, Response } from 'express';
@@ -44,6 +49,7 @@ import { zite } from '#db';
 import * as rateLimit from './rateLimit.js';
 import { runDeploy } from './deploy.js';
 import { sendBlast } from './blast.js';
+import { sendMembers } from './mailMembers.js';
 import type { EndpointConfig } from './backend.js';
 import { openLiveShow, loadLiveShowScenes, loadLiveShowMessages, mapLiveShow } from '../src/lib/liveShow.js';
 
@@ -816,6 +822,53 @@ const TOOLS = [
         subject: String(args.subject ?? ''),
         body: String(args.body ?? ''),
         exclude,
+        dryRun: !!args.dryRun,
+      });
+    },
+  },
+  {
+    name: 'email_members',
+    description:
+      'Email named people through the hub\'s own mail server, with an optional file attached. Use it when a few people asked for something by email (a register, a document) and copy the admins with ccAdmins. Names are matched against the member list and the addresses come from the platform, so do not pass addresses unless you were given one. Call it with dryRun true first: that returns who it resolved and sends nothing. An unknown name or a name that matches two people sends nothing at all.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names from the member list, e.g. "L Bourne". An address works too.',
+        },
+        subject: str('Subject line.'),
+        body: str('The email, plain text. Markdown: **bold**, _italic_, - list, [label](link).'),
+        cc: { type: 'array', items: { type: 'string' }, description: 'Also copy these people.' },
+        ccAdmins: { type: 'boolean', description: 'Copy every admin who is not already a recipient.' },
+        attachment: {
+          type: 'object',
+          properties: {
+            filename: str('e.g. register-2026-11-22.pdf'),
+            base64: str('The file, base64 encoded, no data: prefix. Keep it under 12 kB here.'),
+          },
+          required: ['filename', 'base64'],
+          additionalProperties: false,
+          description: 'A file to attach.',
+        },
+        dryRun: { type: 'boolean', description: 'Return the resolved recipients and send nothing. Do this first.' },
+      },
+      required: ['to', 'subject', 'body'],
+      additionalProperties: false,
+    },
+    run: async (_byName: Endpoints, args: any) => {
+      const list = (v: unknown) => (Array.isArray(v) ? v.map((x: unknown) => String(x)) : []);
+      return sendMembers({
+        to: list(args.to),
+        cc: list(args.cc),
+        ccAdmins: !!args.ccAdmins,
+        subject: String(args.subject ?? ''),
+        body: String(args.body ?? ''),
+        attachment:
+          args.attachment && typeof args.attachment === 'object'
+            ? { filename: String((args.attachment as any).filename ?? ''), base64: String((args.attachment as any).base64 ?? '') }
+            : undefined,
         dryRun: !!args.dryRun,
       });
     },
