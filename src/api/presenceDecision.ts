@@ -1,17 +1,29 @@
 import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
-import { requireAdmin, upsertAttendance } from '../lib/server';
-import { activeSession, findPresenceByToken, one, logPresenceEvent, sessionSubEventId } from '../lib/presence';
+import { requireAdmin } from '../lib/server';
+import {
+  activeSession,
+  findPresenceByToken,
+  logPresenceEvent,
+  one,
+  registerReason,
+  registerStateFor,
+  sessionSubEventId,
+  writeRegister,
+} from '../lib/presence';
 
 /**
  * Approve or decline a member's pending sign-in/sign-out. Admins only.
  *
- * Approving is the only thing in the app that writes a presence State, and it
- * applies exactly one transition:
+ * Approving applies exactly one transition:
  *   Sign In  -> On Site,           stamping signedInAt
  *   Sign Out -> Expected Back when they said they are returning, otherwise
  *              Off Site. Both stamp signedOutAt.
+ *
+ * The register follows whichever way it went, because the register and check-in
+ * are one fact written in two places: in is green, away and coming back is
+ * yellow with the time, gone is red with the reason. Neither side is the boss.
  *
  * Declining touches nothing but the request itself. A declined member keeps
  * whatever state they already had, because "no" to leaving is not the same as
@@ -82,21 +94,20 @@ export default createEndpoint({
       } as never,
     });
 
-    // Approving a sign-in on the /a/:token page counts exactly like scanning
-    // the code does: they are in the room, so they are on the register. Only
-    // a sign-in writes the register, because stepping out is not an absence
-    // from the session (ticket 111655d6).
+    // The same approval writes the member's colour for the event, so the
+    // register tells the truth about somebody who has just signed in or out.
     // A full id, never the first character of one: a string subEvent made this
     // "e" and the register write 500'd after the approval had already landed.
     const sessionSub = sessionSubEventId(session);
-    if (action === 'Sign In' && memberId && sessionSub) {
-      await upsertAttendance([{
-        memberId,
+    if (memberId && sessionSub) {
+      await writeRegister({
         subEventId: sessionSub,
-        status: 'Expected Arrival',
-        byAdmin: true,
-        registerState: 'green',
-      }]);
+        memberId,
+        state: registerStateFor(approved.state),
+        reason: action === 'Sign In' ? '' : registerReason(row.reasonLabel, row.reason),
+        returnAt: row.expectedBackAt ?? null,
+        by: me.id,
+      });
     }
 
     await logPresenceEvent({

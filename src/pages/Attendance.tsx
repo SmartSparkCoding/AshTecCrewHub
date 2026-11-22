@@ -237,7 +237,9 @@ export default function Attendance() {
                         {backLabel(mine.expectedBackAt)}
                       </span>
                     )}
-                    {mine?.state && mine.state !== 'On Site' && mine.reasonLabel && (
+                    {/* Hidden when the register note already carries the reason:
+                        a mirrored row says the same words twice otherwise. */}
+                    {mine?.state && mine.state !== 'On Site' && mine.reasonLabel && !registerNote && (
                       <span className="text-sm text-muted-foreground">
                         {mine.reasonLabel}
                         {mine.reason && <span className="italic"> · &ldquo;{mine.reason}&rdquo;</span>}
