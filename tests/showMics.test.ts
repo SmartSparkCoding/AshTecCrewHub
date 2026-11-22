@@ -85,3 +85,26 @@ test('the dashboards poll faster than they used to', () => {
   assert.match(read('src/pages/Attendance.tsx'), /pending \? 2000 : 5000/);
   assert.match(read('src/pages/admin/AdminPresence.tsx'), /\}, 3000\);/);
 });
+
+test('every column the mic endpoint writes exists in the table', () => {
+  // The table shipped without createdBy and adding a mic returned a 500 with
+  // 'column "createdBy" of relation "ShowMics" does not exist'. Reading the
+  // schema and the insert together stops that happening again.
+  const schema = read('server/db/schema.sql');
+  const start = schema.indexOf('CREATE TABLE IF NOT EXISTS "ShowMics"');
+  assert.ok(start > 0, 'ShowMics should be in the schema');
+  const table = schema.slice(start, schema.indexOf(');', start));
+  const columns = new Set([...table.matchAll(/"(\w+)"\s+(?:uuid|text|int|timestamptz)/g)].map((m) => m[1]));
+  const alter = schema.slice(start);
+  for (const m of alter.matchAll(/ALTER TABLE "ShowMics" ADD COLUMN IF NOT EXISTS "(\w+)"/g)) columns.add(m[1]);
+
+  const source = read('src/api/saveMic.ts');
+  const insert = source.slice(source.indexOf('zite.showMics.create({'), source.indexOf('as never'));
+  const written = [...insert.matchAll(/^\s+(\w+)\s*(?::|,)/gm)]
+    .map((m) => m[1])
+    .filter((k) => k !== 'record');
+  assert.ok(written.length >= 5, 'the insert should write the row fields');
+  for (const key of written) {
+    assert.ok(columns.has(key), `saveMic writes "${key}" but ShowMics has no such column`);
+  }
+});
