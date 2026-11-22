@@ -9,7 +9,7 @@ import QrCode from '../components/QrCode';
 import { CUSTOM_REASON, SIGN_OUT_REASONS, fmtDate } from '../lib/constants';
 import { pv } from '../lib/preview';
 import { useLivePresence } from '../lib/livePresence';
-import { Clock, DoorOpen, Loader2, LogOut, MapPin, TriangleAlert, X } from 'lucide-react';
+import { CircleCheck, Clock, DoorOpen, Loader2, LogOut, MapPin, TriangleAlert, X } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 
 const STATE_STYLE: Record<string, string> = {
@@ -43,7 +43,7 @@ const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 export default function Attendance() {
   // Reads the same live presence the header dot and banner use, so this page
   // adds no polling of its own.
-  const { session, me: mine, loading, refresh } = useLivePresence();
+  const { session, me: mine, register, loading, refresh } = useLivePresence();
   const [busy, setBusy] = useState(false);
   const [showHelp, setShowHelp] = useState(() => localStorage.getItem('hc-checkin-help') !== 'hidden');
   const [asking, setAsking] = useState(false);
@@ -59,6 +59,21 @@ export default function Attendance() {
     const t = setInterval(refresh, pending ? 4000 : 15000);
     return () => clearInterval(t);
   }, [refresh, pending]);
+
+  // An admin can tick somebody green without them ever scanning anything, so
+  // the register can already say "in" while presence still says nothing. In that
+  // case there is nothing to scan, and offering a code would put a second
+  // approval on the timeline for something that had already happened.
+  // "Off Site" is the exception: they stepped out and are coming back, so the
+  // green tick is a stale register row rather than an answer about now.
+  const markedIn =
+    register?.state === 'green' && mine?.state !== 'On Site' && mine?.state !== 'Off Site';
+  const registerNote =
+    register?.state === 'yellow'
+      ? `The register says you are away${register.reason ? `: ${register.reason}` : ''}.`
+      : register?.state === 'red'
+        ? `The register says you are not in${register.reason ? `: ${register.reason}` : ''}.`
+        : '';
 
   const token = mine?.approvalToken ?? null;
   const url = useMemo(() => (token ? approvalUrl(token) : ''), [token]);
@@ -201,7 +216,7 @@ export default function Attendance() {
                       >
                         {mine.state}
                       </Badge>
-                    ) : (
+                    ) : markedIn ? null : (
                       <Badge variant="outline" className="border-dashed text-muted-foreground">
                         Not signed in
                       </Badge>
@@ -209,6 +224,13 @@ export default function Attendance() {
                     {mine?.state === 'On Site' && mine.signedInAt && (
                       <span className="text-sm text-muted-foreground">since {clock(mine.signedInAt)}</span>
                     )}
+                    {markedIn && (
+                      <span className="flex items-center gap-1 text-sm text-emerald-400">
+                        <CircleCheck className="h-3.5 w-3.5" />
+                        on the register
+                      </span>
+                    )}
+                    {registerNote && <span className="text-sm text-muted-foreground">{registerNote}</span>}
                     {mine?.comingBack && mine.expectedBackAt && (
                       <span className="flex items-center gap-1 text-sm text-yellow-400">
                         <Clock className="h-3.5 w-3.5" />
@@ -228,6 +250,11 @@ export default function Attendance() {
                   <Button variant="outline" onClick={() => setAsking(true)} disabled={busy}>
                     <LogOut className="mr-2 h-4 w-4" />Sign out
                   </Button>
+                ) : markedIn ? (
+                  // Nothing to press: the register already has them down as in.
+                  // A member the register calls Off Site keeps the button, because
+                  // a green tick over a sign-out is just a stale register row.
+                  <span className="text-sm text-muted-foreground">You are already marked in.</span>
                 ) : (
                   <Button onClick={signIn} disabled={busy}>
                     {busy ? (
@@ -239,6 +266,14 @@ export default function Attendance() {
                   </Button>
                 )}
               </div>
+
+              {markedIn && !asking && (
+                <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  An admin has already ticked you in on the register, so there is no code to scan. If that is wrong,
+                  ask them to change the register.
+                </p>
+              )}
 
               {asking && (
                 <div className="space-y-4 rounded-2xl border p-5">

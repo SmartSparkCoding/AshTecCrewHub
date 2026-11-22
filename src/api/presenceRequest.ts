@@ -3,7 +3,15 @@ import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { actingMember, wordCount } from '../lib/server';
 import { CUSTOM_REASON } from '../lib/constants';
-import { findPresence, newToken, presenceKey, requireActiveSession } from '../lib/presence';
+import {
+  alreadyInRoom,
+  findPresence,
+  newToken,
+  presenceKey,
+  registerFor,
+  requireActiveSession,
+  sessionSubEventId,
+} from '../lib/presence';
 import { notifyPresenceWaiting } from '../../server/notify';
 
 /**
@@ -50,6 +58,21 @@ export default createEndpoint({
     const comingBack = signingOut && !!input.comingBack;
     if (comingBack && !input.expectedBackAt) throw new Error('Please say what time you will be back.');
 
+    const existing = await findPresence(session.id, me.id);
+
+    // The register and check-in answer the same question - are you in the room -
+    // so a green tick already answers it and there is nothing left to scan.
+    // Letting it through leaves a live code for a member an admin marked in by
+    // hand, and a second approval on the timeline for something that already
+    // happened. A member the register says is Off Site is the exception: they
+    // stepped out and are coming back, and the green tick is simply stale.
+    if (!signingOut) {
+      const register = await registerFor(sessionSubEventId(session), me.id);
+      if (alreadyInRoom(register, existing?.state))
+        throw new Error('An admin has already marked you in on the register, so there is no code to scan.');
+      if (existing?.state === 'On Site') throw new Error('You are already signed in.');
+    }
+
     const token = newToken();
     const record = {
       presenceKey: presenceKey(session.id, me.id),
@@ -67,7 +90,6 @@ export default createEndpoint({
     // State and the signed timestamps are deliberately untouched: a request is
     // not the decision, and the member's current state stays on the roster while
     // an admin decides.
-    const existing = await findPresence(session.id, me.id);
     if (existing) await zite.venuePresence.update({ id: existing.id, record });
     else await zite.venuePresence.create({ record });
 

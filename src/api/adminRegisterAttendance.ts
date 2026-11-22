@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { requireAdmin, ids, upsertAttendance } from '../lib/server';
+import { activeSession, clearPendingSignIn, sessionSubEventId } from '../lib/presence';
 
 /**
  * Ticket 57ce12eb, extended for the school-style register.
@@ -40,7 +41,7 @@ export default createEndpoint({
   }),
   outputSchema: z.object({ ok: z.boolean(), state: STATE }),
   execute: async ({ input, context }) => {
-    await requireAdmin(context.user.email);
+    const admin = await requireAdmin(context.user.email);
     const state = input.state ?? (input.present ? 'green' : '');
     const reason = (input.reason ?? '').trim().replace(/\s+/g, ' ');
     if ((state === 'yellow' || state === 'red') && reason.length < 2) {
@@ -72,6 +73,16 @@ export default createEndpoint({
       returnAt,
       byAdmin: true,
     }]);
+
+    // A green tick settles the question a pending sign-in code is asking, so
+    // that code is spent rather than left live on the member's phone. Otherwise
+    // they stand there holding a QR for something an admin has already done, and
+    // approving it later puts a duplicate approval on the timeline.
+    if (state === 'green') {
+      const open = await activeSession();
+      if (open && sessionSubEventId(open) === input.subEventId)
+        await clearPendingSignIn(open.id, input.memberId, admin.id);
+    }
     return { ok: true, state };
   },
 });

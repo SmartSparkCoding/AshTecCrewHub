@@ -16,14 +16,30 @@ export type MyPresence = {
 
 export type LiveSession = { id: string; title: string; type: string; date: string | null; startedAt: string | null };
 
+/**
+ * The member's colour on the register for the same event.
+ *
+ * Presence answers "where are you right now" and the register answers "are you
+ * in for this session"; an admin can answer the second question without the
+ * first, so the page has to know both to avoid contradicting the register.
+ */
+export type MyRegister = { state: string; reason: string; returnAt: string | null };
+
 type Live = {
   session: LiveSession | null
   me: MyPresence | null
+  register: MyRegister | null
   loading: boolean
   refresh: () => Promise<void>
 };
 
-const Ctx = createContext<Live>({ session: null, me: null, loading: true, refresh: async () => {} });
+const Ctx = createContext<Live>({
+  session: null,
+  me: null,
+  register: null,
+  loading: true,
+  refresh: async () => {},
+});
 
 /**
  * One poller for "is a check-in session open, and where do I stand?" shared by
@@ -35,6 +51,7 @@ const Ctx = createContext<Live>({ session: null, me: null, loading: true, refres
 export function LivePresenceProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<LiveSession | null>(null);
   const [me, setMe] = useState<MyPresence | null>(null);
+  const [register, setRegister] = useState<MyRegister | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -42,6 +59,7 @@ export function LivePresenceProvider({ children }: { children: ReactNode }) {
       const r = await getPresence(pv());
       setSession(r.session ?? null);
       setMe(r.me ?? null);
+      setRegister(r.register ?? null);
     } catch {
       // A dropped poll must not blank what is already on screen.
     } finally {
@@ -55,7 +73,10 @@ export function LivePresenceProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [refresh]);
 
-  const value = useMemo<Live>(() => ({ session, me, loading, refresh }), [session, me, loading, refresh]);
+  const value = useMemo<Live>(
+    () => ({ session, me, register, loading, refresh }),
+    [session, me, register, loading, refresh],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

@@ -135,6 +135,58 @@ export async function logPresenceEvent(event: {
   });
 }
 
+/** One person's colour on the register for a single event. */
+export type RegisterRow = { state: string; reason: string; returnAt: string | null };
+
+/**
+ * Where this member stands on the *register* for one event, if anywhere.
+ *
+ * Check-in and the register are two views of the same fact, and they had drifted
+ * apart: an admin ticks somebody green, and that member can still open the
+ * Check-in page and produce a sign-in code for a room they are already marked
+ * into. Anything that needs the register's colour for one person reads it here,
+ * rather than re-deriving the rule at each call site and getting it half right.
+ */
+export async function registerFor(subEventId: string, memberId: string): Promise<RegisterRow> {
+  const blank: RegisterRow = { state: '', reason: '', returnAt: null };
+  if (!subEventId || !memberId) return blank;
+  const { records } = await zite.attendance.findAll({ filters: { subEvent: subEventId }, limit: 2000 });
+  const row = records.find((a) => ids(a.member)[0] === memberId) as unknown as
+    | { registerState?: string; reason?: string; returnAt?: string | null }
+    | undefined;
+  if (!row) return blank;
+  return { state: row.registerState ?? '', reason: row.reason ?? '', returnAt: row.returnAt ?? null };
+}
+
+/**
+ * Is the register already answering "are you in the room"?
+ *
+ * Green means in, which makes a sign-in code a question about something that
+ * has already been settled. Off Site is the exception: they stepped out and are
+ * coming back, so the green tick is a stale register row, not an answer.
+ */
+export const alreadyInRoom = (register: RegisterRow, state?: string | null) =>
+  register.state === 'green' && state !== 'Off Site';
+
+/**
+ * A green tick on the register already answers the question a pending sign-in
+ * code is asking, so that request is spent instead of left open on the member's
+ * phone. Without this the old QR keeps working after an admin has marked them
+ * in by hand, and approving it a second time is noise on the timeline.
+ *
+ * Only sign-in requests are cleared. A pending sign-out is a different question
+ * ("may I leave?") that a green tick says nothing about.
+ */
+export async function clearPendingSignIn(sessionId: string, memberId: string, by: string) {
+  const row = await findPresence(sessionId, memberId);
+  if (!row || row.pendingAction !== 'Sign In') return false;
+  await zite.venuePresence.update({
+    id: row.id,
+    record: { pendingAction: null, approvalToken: '', updatedBy: by } as never,
+  });
+  return true;
+}
+
 /** The member ids behind a set of presence rows, for name lookups. */
 export const memberIdsOf = (rows: { member?: string | string[] | null }[]) =>
   [...new Set(rows.flatMap((r) => ids(r.member)))];
