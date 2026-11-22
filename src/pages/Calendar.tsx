@@ -334,14 +334,18 @@ export default function Calendar() {
         'text-[11px] leading-tight rounded-md px-1.5 py-1 border truncate',
         typeChip(e.type),
         e.hidden && 'opacity-60 border-dashed',
+        'max-sm:border-0 max-sm:bg-transparent max-sm:p-0',
       )}
     >
-      <div className="flex items-center gap-1">
+      {/* Ticket 1b2ed449: a 50px day cell has no room for a title, so on a phone
+          the chip is a colour bar and tapping the day opens the day sheet. */}
+      <div className="hidden h-2 w-full rounded-sm bg-current max-sm:block" />
+      <div className="hidden min-w-0 items-center gap-1 sm:flex">
         {e.startTime && <span className="font-mono opacity-80 shrink-0">{e.startTime}</span>}
-        <span className="truncate">{e.title}</span>
+        <span className="min-w-0 truncate">{e.title}</span>
         {e.hidden && <EyeOff className="h-3 w-3 shrink-0 opacity-70" />}
       </div>
-      <div className="truncate opacity-70">{showName(e) || (isClubSession(e.type) ? 'Club session' : 'No show')}</div>
+      <div className="hidden truncate opacity-70 sm:block">{showName(e) || (isClubSession(e.type) ? 'Club session' : 'No show')}</div>
     </div>
   );
 
@@ -406,7 +410,7 @@ export default function Calendar() {
               const inMonth = day.getMonth() === month.getMonth();
               const isToday = key === today;
               return (
-                <div key={key} className={cn('min-h-24 border-r last:border-r-0', !inMonth && 'bg-muted/20')}>
+                <div key={key} className={cn('min-h-16 border-r last:border-r-0 sm:min-h-24', !inMonth && 'bg-muted/20')}>
                   <button
                     type="button"
                     onClick={() => setSheet({ day: key })}

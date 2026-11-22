@@ -97,7 +97,7 @@ function BarRow({ label, value, max, sub }: { label: string; value: number; max:
 
 function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border bg-card p-5">
+    <section className="min-w-0 rounded-2xl border bg-card p-5">
       <h2 className="text-sm font-semibold">{title}</h2>
       {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       <div className="mt-3">{children}</div>
@@ -310,7 +310,7 @@ export default function Analytics() {
                     </>
                   ) : (
                     <Empty>
-                      No campaign tags yet. Add something like <span className="font-mono">?utm_source=poster&amp;utm_campaign=open_evening</span> to a
+                      No campaign tags yet. Add something like <span className="break-all font-mono">?utm_source=poster&amp;utm_campaign=open_evening</span> to a
                       link and it will be counted here.
                     </Empty>
                   )}
