@@ -26,10 +26,15 @@
  *   - Every call is rate limited per IP and logged to the server log.
  *
  * Writes are limited to the live show chat, replying to a support ticket and
- * closing one. Not done on purpose: member create/delete, settings, and anything
- * that emails the whole crew. Those are one careless tool call away from
- * annoying 40 people, and they are easy to add later if they are ever actually
- * wanted.
+ * closing one. Not done on purpose: member create/delete and settings. Those are
+ * one careless tool call away from breaking the app for everyone.
+ *
+ * `email_crew` is the one exception, added on request (Jacob, Nov 22) so a
+ * crewwide note can be sent without looping a browser a hundred times. It is
+ * built to be boring: staff, preview accounts and AI agent accounts are dropped
+ * by the same rule the app uses, `exclude` leaves named people out, every send
+ * is written to the admin email log, and `dryRun` shows the recipient list
+ * without sending anything.
  */
 
 import type { Express, Request, Response } from 'express';
@@ -38,6 +43,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { zite } from '#db';
 import * as rateLimit from './rateLimit.js';
 import { runDeploy } from './deploy.js';
+import { sendBlast } from './blast.js';
 import type { EndpointConfig } from './backend.js';
 import { openLiveShow, loadLiveShowScenes, loadLiveShowMessages, mapLiveShow } from '../src/lib/liveShow.js';
 
@@ -780,6 +786,38 @@ const TOOLS = [
         ...(args.remove ? { remove: true } : {}),
       });
       return { ok: true, announcement: r?.announcement ?? r ?? null };
+    },
+  },
+  {
+    name: 'email_crew',
+    description:
+      'Email the crew once, in one batch. Staff, preview accounts and AI agent accounts are never included, and anyone named in `exclude` is left out. Call it with dryRun true first: that returns the recipient list and sends nothing. The body may use {name}, which becomes the first name. Every send is written to the admin email log.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        subject: str('Subject line.'),
+        body: str('The email, plain text. {name} becomes the first name.'),
+        exclude: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Names or email addresses to leave out.',
+        },
+        dryRun: {
+          type: 'boolean',
+          description: 'Return the recipient list and send nothing. Do this first.',
+        },
+      },
+      required: ['subject', 'body'],
+      additionalProperties: false,
+    },
+    run: async (_byName: Endpoints, args: any) => {
+      const exclude = Array.isArray(args.exclude) ? args.exclude.map((x: unknown) => String(x)) : [];
+      return sendBlast({
+        subject: String(args.subject ?? ''),
+        body: String(args.body ?? ''),
+        exclude,
+        dryRun: !!args.dryRun,
+      });
     },
   },
   {
