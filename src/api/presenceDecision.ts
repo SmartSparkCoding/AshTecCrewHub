@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { requireAdmin, upsertAttendance } from '../lib/server';
-import { activeSession, findPresenceByToken, one, logPresenceEvent } from '../lib/presence';
+import { activeSession, findPresenceByToken, one, logPresenceEvent, sessionSubEventId } from '../lib/presence';
 
 /**
  * Approve or decline a member's pending sign-in/sign-out. Admins only.
@@ -86,7 +86,9 @@ export default createEndpoint({
     // the code does: they are in the room, so they are on the register. Only
     // a sign-in writes the register, because stepping out is not an absence
     // from the session (ticket 111655d6).
-    const sessionSub = session.subEvent?.[0] ?? '';
+    // A full id, never the first character of one: a string subEvent made this
+    // "e" and the register write 500'd after the approval had already landed.
+    const sessionSub = sessionSubEventId(session);
     if (action === 'Sign In' && memberId && sessionSub) {
       await upsertAttendance([{
         memberId,

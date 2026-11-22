@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { requireAdmin, upsertAttendance } from '../lib/server';
-import { activeSession, findPresenceByToken, logPresenceEvent, one } from '../lib/presence';
+import { activeSession, findPresenceByToken, logPresenceEvent, one, sessionSubEventId } from '../lib/presence';
 
 /**
  * One scan, one outcome (feedback round 3).
@@ -30,7 +30,7 @@ export default createEndpoint({
     const session = await activeSession();
     if (!session) throw new Error('No check-in is open for this session yet. Start it, then scan again.');
 
-    const sessionSub = one(session.subEvent);
+    const sessionSub = sessionSubEventId(session);
     if (sessionSub && sessionSub !== input.subEventId) {
       const other = await zite.subEvents.findOne({ id: sessionSub });
       throw new Error(`Check-in is open for "${other?.title ?? 'another session'}". Close that one first, then scan here.`);
