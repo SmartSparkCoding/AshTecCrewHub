@@ -69,7 +69,9 @@ export function LivePresenceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 15000);
+    // 4s: this one poll feeds the header dot, the banner and the Check-in page, so
+    // it is the cheapest place to make the whole app feel awake.
+    const t = setInterval(refresh, 4000);
     return () => clearInterval(t);
   }, [refresh]);
 

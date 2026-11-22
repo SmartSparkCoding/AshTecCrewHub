@@ -4,6 +4,7 @@ import { ask } from '../../lib/dialogs';
 import {
   adminGetLiveShow, adminSaveLiveShow, adminSaveLiveShowScenes, adminLiveShowControl,
   adminLiveShowDevice, liveShowChat, liveShowAnnouncement, saveLiveShowScript, adminImportLiveShowScenes,
+  setMicCast,
 } from '#api';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
@@ -19,12 +20,20 @@ import {
 import {
   Loader2, Plus, Trash2, ArrowUp, ArrowDown, Tv, Play, Pause, RotateCcw, ChevronLeft,
   ChevronRight, Save, ScrollText, BellRing, Megaphone, MessageSquare, Monitor, Smartphone,
-  Tablet, Power, Radio, Pencil, X,
+  Tablet, Power, Radio, Pencil, X, Users,
 } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 import { useAdminData } from '../../lib/useAdminData';
 
 const STATUSES = ['standby', 'rehearsal', 'live', 'intermission', 'finished'] as const;
+
+/** Which cast is on, and how many mics each one has. */
+type MicList = {
+  cast: 'A' | 'B';
+  castAName: string;
+  castBName: string;
+  rows: { number: string; character: string; performer: string }[];
+};
 const statusLabel = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type LS = {
@@ -107,6 +116,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
   const [touches, setTouches] = useState<Touch[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [mics, setMics] = useState<MicList | null>(null);
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [devName, setDevName] = useState('');
@@ -127,6 +137,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
   const [importing, setImporting] = useState(false);
   const [starting, setStarting] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [switchingCast, setSwitchingCast] = useState(false);
   const [savingDevice, setSavingDevice] = useState(false);
   const [busyAction, setBusyAction] = useState('');
 
@@ -167,6 +178,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
         touches: Touch[];
         messages: Message[];
         announcements: Announcement[];
+        mics: MicList | null;
       };
       setLs(r.liveShow ?? null);
       setForm(r.liveShow
@@ -186,6 +198,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
       setTouches((r.touches as Touch[]) ?? []);
       setMessages((r.messages as Message[]) ?? []);
       setAnnouncements((r.announcements as Announcement[]) ?? []);
+      setMics(r.mics ?? null);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -245,6 +258,32 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
       toast.error((e as Error).message);
     } finally {
       setStarting(false);
+    }
+  };
+
+  const switchCast = async (cast: 'A' | 'B') => {
+    if (!showId) return;
+    setSwitchingCast(true);
+    try {
+      const r = await setMicCast({ showId, cast });
+      setMics((m) => (m ? { ...m, cast: r.cast as 'A' | 'B' } : m));
+      toast.success(`Stage board is now on ${cast === 'A' ? r.castAName : r.castBName}.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSwitchingCast(false);
+    }
+  };
+
+  const renameCast = async (field: 'castAName' | 'castBName', value: string) => {
+    if (!showId) return;
+    const clean = value.trim();
+    if (!clean || clean === (field === 'castAName' ? mics?.castAName : mics?.castBName)) return;
+    try {
+      const r = await setMicCast({ showId, [field]: clean });
+      setMics((m) => (m ? { ...m, castAName: r.castAName, castBName: r.castBName } : m));
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -602,6 +641,44 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
             <label className="text-sm">Intermission length (minutes)</label>
             <Input type="number" min={0} value={form.intermissionMinutes} onChange={(e) => setField('intermissionMinutes', Math.max(0, Number(e.target.value) || 0))} />
           </div>
+        </div>
+        <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4" />Cast on stage</h3>
+          <p className="text-xs text-muted-foreground">
+            The stage board lists the mics for whichever cast is on. Switching is live: every screen catches up within a couple of seconds.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(['A', 'B'] as const).map((key) => {
+              const name = key === 'A' ? mics?.castAName ?? 'Cast X' : mics?.castBName ?? 'Cast Z';
+              const on = (mics?.cast ?? 'A') === key;
+              return (
+                <button type="button" key={key} disabled={!showId || switchingCast}
+                  onClick={() => void switchCast(key)}
+                  className={cn('rounded-full border px-3 py-1 text-sm transition disabled:opacity-50',
+                    on ? 'border-primary bg-primary/15 text-primary font-medium' : 'border-border text-muted-foreground hover:border-primary/50')}>
+                  {name}{on ? ' · on stage' : ''}
+                </button>
+              );
+            })}
+            {switchingCast && <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" />}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">First cast name</label>
+              <Input defaultValue={mics?.castAName ?? 'Cast X'} maxLength={40} key={`a-${mics?.castAName ?? ''}`}
+                onBlur={(e) => void renameCast('castAName', e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Second cast name</label>
+              <Input defaultValue={mics?.castBName ?? 'Cast Z'} maxLength={40} key={`b-${mics?.castBName ?? ''}`}
+                onBlur={(e) => void renameCast('castBName', e.target.value)} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {(mics?.rows.length ?? 0) === 0
+              ? 'No mics on this cast yet. Add them in the show workspace, under Mics.'
+              : `${mics?.rows.length} mic${mics?.rows.length === 1 ? '' : 's'} on this cast. Edit the list in the show workspace.`}
+          </p>
         </div>
         <div className="rounded-md border bg-muted/30 p-4 space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2"><BellRing className="h-4 w-4" />Movement alert defaults</h3>

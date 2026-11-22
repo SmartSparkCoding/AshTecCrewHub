@@ -10,6 +10,7 @@ import {
   loadLiveShowMessages,
   loadLiveShowTouches,
   activeAnnouncements,
+  loadMicList,
 } from '../lib/liveShow';
 
 const EMPTY = {
@@ -46,6 +47,9 @@ export default createEndpoint({
       touches: await loadLiveShowTouches(liveShow.id, 60),
       messages: await loadLiveShowMessages(liveShow.id),
       announcements: await activeAnnouncements(liveShow.id),
+      // The cast switch lives in Show settings, and it reads its current answer
+      // from the same place the stage board does, so the two can never disagree.
+      mics: await loadMicList(input.showId),
     };
   },
 });

@@ -190,7 +190,9 @@ export default function AdminCheckIn() {
   // own phones, so the waiting list has to keep up without a manual refresh.
   useEffect(() => {
     if (!chosen || roster?.event.mode !== 'scan') return;
-    const t = setInterval(() => { void loadRoster(chosen, true); }, 15000);
+    // The roster is what a stage manager watches while people walk in, so it
+    // polls faster than a normal admin page.
+    const t = setInterval(() => { void loadRoster(chosen, true); }, 3000);
     return () => clearInterval(t);
   }, [chosen, roster?.event.mode, loadRoster]);
 

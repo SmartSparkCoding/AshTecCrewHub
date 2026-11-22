@@ -34,7 +34,7 @@ export default function Widget() {
 
   useEffect(() => {
     void load();
-    const t = window.setInterval(() => void load(), 60_000);
+    const t = window.setInterval(() => void load(), 20_000);
     return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

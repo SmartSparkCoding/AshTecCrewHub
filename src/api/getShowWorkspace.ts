@@ -17,15 +17,16 @@ export default createEndpoint({
   inputSchema: z.object({ showId: z.string() }),
   outputSchema: z.any(),
   execute: async ({ context, input }) => {
-    const { me, mapped } = await requireShowAccess(context.user.email, input.showId);
+    const { me, show, mapped } = await requireShowAccess(context.user.email, input.showId);
 
-    const [checklist, cues, props, notes, timings, scenes, subs, members, roll, signs, calls, covers] = await Promise.all([
+    const [checklist, cues, props, notes, timings, scenes, mics, subs, members, roll, signs, calls, covers] = await Promise.all([
       zite.showChecklistItems.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.showCues.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.showProps.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.rehearsalNotes.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.sceneTimings.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.showScenes.findAll({ filters: { show: input.showId }, limit: 500 }),
+      zite.showMics.findAll({ filters: { show: input.showId }, limit: 500 }),
       zite.subEvents.findAll({ limit: 2000 }),
       zite.crewMembers.findAll({ limit: 2000 }),
       zite.rollCalls.findAll({ limit: 5000 }),
@@ -164,8 +165,25 @@ export default createEndpoint({
       }))
       .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
 
+    // Two mics numbered 3 in different casts are both right, so the sort is
+    // cast, then the order they were typed, then the number itself.
+    const micRows = mics.records
+      .map((r) => ({
+        id: r.id,
+        cast: String(r.cast ?? 'A'),
+        number: String(r.number ?? ''),
+        character: String(r.character ?? ''),
+        performer: String(r.performer ?? ''),
+        notes: String(r.notes ?? ''),
+        position: Number(r.position ?? 0),
+      }))
+      .sort((a, b) => a.cast.localeCompare(b.cast) || a.position - b.position || a.number.localeCompare(b.number, 'en', { numeric: true }));
+
     return {
       show: mapped,
+      mics: micRows,
+      micCast: String(show.micCast ?? 'A'),
+      castNames: { A: String(show.castAName ?? 'Cast X'), B: String(show.castBName ?? 'Cast Z') },
       techLocked: !!mapped.techLocked,
       events: events.map((e) => ({ ...mapSubEvent(e), showId: input.showId })),
       checklist: items,

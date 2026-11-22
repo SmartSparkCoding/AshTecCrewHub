@@ -787,6 +787,13 @@ export type SaveLostItemInputType = NonNullable<_SaveLostItemCfg['inputSchema']>
 export type SaveLostItemOutputType = Awaited<ReturnType<_SaveLostItemCfg['execute']>>;
 export const saveLostItem = createCaller<SaveLostItemInputType, SaveLostItemOutputType>('saveLostItem');
 
+import type { default as _SaveMicEp } from '../api/saveMic';
+
+type _SaveMicCfg = typeof _SaveMicEp;
+export type SaveMicInputType = NonNullable<_SaveMicCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_SaveMicCfg['execute']>[0]['input'];
+export type SaveMicOutputType = Awaited<ReturnType<_SaveMicCfg['execute']>>;
+export const saveMic = createCaller<SaveMicInputType, SaveMicOutputType>('saveMic');
+
 import type { default as _SaveNotificationPrefsEp } from '../api/saveNotificationPrefs';
 
 type _SaveNotificationPrefsCfg = typeof _SaveNotificationPrefsEp;
@@ -884,6 +891,13 @@ type _SetAttendanceCfg = typeof _SetAttendanceEp;
 export type SetAttendanceInputType = NonNullable<_SetAttendanceCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_SetAttendanceCfg['execute']>[0]['input'];
 export type SetAttendanceOutputType = Awaited<ReturnType<_SetAttendanceCfg['execute']>>;
 export const setAttendance = createCaller<SetAttendanceInputType, SetAttendanceOutputType>('setAttendance');
+
+import type { default as _SetMicCastEp } from '../api/setMicCast';
+
+type _SetMicCastCfg = typeof _SetMicCastEp;
+export type SetMicCastInputType = NonNullable<_SetMicCastCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_SetMicCastCfg['execute']>[0]['input'];
+export type SetMicCastOutputType = Awaited<ReturnType<_SetMicCastCfg['execute']>>;
+export const setMicCast = createCaller<SetMicCastInputType, SetMicCastOutputType>('setMicCast');
 
 import type { default as _SetMyAdminSecretEp } from '../api/setMyAdminSecret';
 
@@ -1072,6 +1086,7 @@ export const api = {
   saveGreenRoomNote,
   saveLiveShowScript,
   saveLostItem,
+  saveMic,
   saveNotificationPrefs,
   saveProp,
   savePushSubscription,
@@ -1086,6 +1101,7 @@ export const api = {
   sendTestNotification,
   setAdminNotifications,
   setAttendance,
+  setMicCast,
   setMyAdminSecret,
   setShowResponse,
   setTechLock,

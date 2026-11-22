@@ -23,7 +23,7 @@ export default function Watch() {
         .then((d) => { if (live) setEvents((d as GetScheduleOutputType).events as unknown as NextCall[]); })
         .catch(() => {});
     void load();
-    const t = window.setInterval(() => void load(), 30_000);
+    const t = window.setInterval(() => void load(), 8000);
     return () => { live = false; window.clearInterval(t); };
   }, []);
 
