@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { actingMember } from '../lib/server';
-import { activeSession, findPresence, mapPresence, one, registerFor } from '../lib/presence';
+import {
+  activeSession,
+  findPresence,
+  mapPresence,
+  one,
+  reconcileMember,
+  registerFor,
+} from '../lib/presence';
 
 /**
  * Everything the signed-in member needs to render check-in: whether a session is
@@ -24,6 +31,12 @@ export default createEndpoint({
 
     const subId = one(session.subEvent);
     const sub = subId ? await zite.subEvents.findOne({ id: subId }) : undefined;
+    // Anything that drifted apart before the mirror existed is put back in step
+    // here, on the one page that renders both halves. Doing it on the read is
+    // what makes an already-wrong row fixable at all: a mirror only ever
+    // touched rows it wrote itself, so the ticks from before it shipped were
+    // frozen green on the register while their owners were signed out.
+    await reconcileMember({ id: String(session.id), subEvent: session.subEvent }, me.id, me.id);
     const mine = await findPresence(session.id, me.id);
     // Their colour on the register for this same event. The Check-in page shows
     // it and will not offer a sign-in code when an admin has already ticked them

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createEndpoint } from '#backend';
 import { zite } from '#db';
 import { requireMember, isStaff, ids } from '../lib/server';
-import { activeSession, memberIdsOf, one } from '../lib/presence';
+import { activeSession, memberIdsOf, one, reconcileSession } from '../lib/presence';
 
 /**
  * The live view of the room: who is here, who has stepped out, who is on their
@@ -41,6 +41,10 @@ export default createEndpoint({
 
     const subId = one(session.subEvent);
     const sub = subId ? await zite.subEvents.findOne({ id: subId }) : undefined;
+    // The roster is where somebody notices the room and the register disagree,
+    // so the whole set is reconciled before it is rendered rather than making
+    // every member open Check-in first. Only a manager's view writes anything.
+    if (canManage) await reconcileSession({ id: String(session.id), subEvent: session.subEvent }, me.id);
     const rows = (await zite.venuePresence.findAll({ filters: { session: session.id }, limit: 2000 }))
       .records;
 
