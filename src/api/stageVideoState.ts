@@ -15,6 +15,10 @@ export default createEndpoint({
     deviceKey: z.string().min(1).max(120),
     liveShowId: z.string().optional(),
     name: z.string().max(80).optional(),
+    // What this screen has been pointed at. Watching is a display choice, not a
+    // camera going live, so it needs no admin PIN: the PIN is what stops a
+    // phone filming backstage without permission.
+    watch: z.string().max(120).optional(),
   }),
   outputSchema: z.object({
     liveShowId: z.string(),
@@ -46,6 +50,7 @@ export default createEndpoint({
           liveShow: liveShowId,
           lastSeenAt: now,
           ...(input.name ? { name: input.name } : {}),
+          ...(input.watch === undefined ? {} : { watching: input.watch }),
         },
       });
     } else {
@@ -56,7 +61,7 @@ export default createEndpoint({
           name: input.name ?? '',
           role: 'screen',
           sharing: false,
-          watching: '',
+          watching: input.watch ?? '',
           lastSeenAt: now,
         },
       });

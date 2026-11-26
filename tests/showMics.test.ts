@@ -72,10 +72,12 @@ test('the workspace list is filtered by cast and saves on blur', () => {
 
 test('the board does not offer a sign-in or chat control it cannot use', () => {
   // Mics are read-only on the stage board: a screen on a wall does not edit rows.
-  const start = dash.indexOf('<Mic className="h-3.5 w-3.5"');
+  // The deck keeps its own block inside MicOrCamera, which swaps with the camera.
+  const start = dash.indexOf("{slot === 'mics' ? (");
   assert.ok(start > 0, 'the board should have a mic panel');
-  const panel = dash.slice(start, dash.indexOf('Crew channel', start));
+  const panel = dash.slice(start, dash.indexOf(') : video.watching && picked ?', start));
   assert.ok(panel.length > 200, 'the panel slice should cover the whole block');
+  assert.ok(panel.includes('m.character'), 'the panel slice should be the deck rows');
   assert.ok(!panel.includes('onClick'), 'the mic panel must be read-only');
 });
 

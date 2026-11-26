@@ -38,6 +38,10 @@ export function useStageVideo(opts: {
   const [remote, setRemote] = useState<MediaStream | null>(null);
   const [error, setError] = useState('');
 
+  // What this screen was told to watch. Sent up with every poll, so a reload
+  // puts the same camera back in the panel, and `null` means "leave it alone".
+  const wantWatch = useRef<string | null>(null);
+
   const localStream = useRef<MediaStream | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
   const busy = useRef(new Set<string>());
@@ -146,7 +150,12 @@ export function useStageVideo(opts: {
 
     const tick = async () => {
       try {
-        const state = await stageVideoState({ deviceKey, name, liveShowId });
+        const state = await stageVideoState({
+          deviceKey,
+          name,
+          liveShowId,
+          ...(wantWatch.current === null ? {} : { watch: wantWatch.current }),
+        });
         if (!alive.current) return;
         setPeers(state.peers);
         setSharing(state.me.sharing);
@@ -200,5 +209,18 @@ export function useStageVideo(opts: {
     setRemote(null);
   }, [closePeer]);
 
-  return { peers, sharing, watching, remote, error, setLocal, reset };
+  /** Point this screen at a camera, or at '' to put the mic list back up. */
+  const setWatch = useCallback(
+    (target: string) => {
+      wantWatch.current = target;
+      setWatching(target);
+      if (!target) {
+        for (const key of [...pcs.current.keys()]) closePeer(key);
+        setRemote(null);
+      }
+    },
+    [closePeer],
+  );
+
+  return { peers, sharing, watching, remote, error, setLocal, reset, setWatch };
 }
