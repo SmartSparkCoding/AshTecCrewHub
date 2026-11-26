@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
@@ -132,6 +132,7 @@ function CatAdminLogin({ open, onClose }: { open: boolean; onClose: () => void }
 
 /** The crew cat. Watches your cursor, jumps when poked, naps when ignored. */
 export default function LoginCat() {
+  const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLImageElement>(null);
   const [lean, setLean] = useState({ x: 0, y: 0 });
   const [say, setSay] = useState<string | null>(null);
@@ -206,11 +207,11 @@ export default function LoginCat() {
           height={87}
           className="cursor-pointer"
           animate={
-            jump
+            jump && !reduceMotion
               ? { y: [0, -30, 0, -8, 0], rotate: [0, -7, 5, 0] }
-              : asleep
+              : asleep && !reduceMotion
                 ? { rotate: [0, 3, 0], scale: [1, 0.99, 1] }
-                : { rotate: lean.x, y: [0, -2, 0] }
+                : { rotate: lean.x, y: 0 }
           }
           transition={
             jump

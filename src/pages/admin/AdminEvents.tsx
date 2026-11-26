@@ -76,15 +76,15 @@ export default function AdminEvents({ showId: fixedShowId }: { showId?: string }
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{e.title}</span>
-          <Badge variant="outline" className={e.type === 'Performance' ? 'border-pink-500/40 text-pink-400' : e.type === 'Club Session' ? 'border-emerald-500/40 text-emerald-400' : 'border-sky-500/40 text-sky-400'}>{e.subtype || e.type}</Badge>
+          <Badge variant="outline" className={e.type === 'Performance' ? 'border-pink-500/40 text-pink-400' : e.type === 'Club Session' ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400' : 'border-sky-500/40 text-sky-700 dark:text-sky-400'}>{e.subtype || e.type}</Badge>
           <Badge variant="outline" className={IMPORTANCE_STYLE[e.importance]}>{e.importance}</Badge>
           {e.hidden && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-400">
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
               <EyeOff className="h-3 w-3 mr-1" />Hidden
             </Badge>
           )}
           {e.needsContractors && (
-            <Badge variant="outline" className="border-sky-500/40 text-sky-400">
+            <Badge variant="outline" className="border-sky-500/40 text-sky-700 dark:text-sky-400">
               <Users className="h-3 w-3 mr-1" />{e.contractorIds.length ? `${e.contractorIds.length} contractor${e.contractorIds.length === 1 ? '' : 's'}` : 'Contractors needed'}
             </Badge>
           )}
@@ -92,9 +92,9 @@ export default function AdminEvents({ showId: fixedShowId }: { showId?: string }
         <p className="text-sm text-muted-foreground mt-1">{fmtDate(e.date, e.dateTbc)}{e.meetTime && ` · Meet ${e.meetTime}`} · <span className="font-mono text-xs">{dueLabel(e.dueDate, e.dueUnknown)}</span></p>
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm font-mono">
-        <span className="text-emerald-400" title="Expected arrival">✓ {cnt(e.id, 'Expected Arrival')}</span>
-        <span className="text-yellow-400" title="Maybe">? {cnt(e.id, 'Maybe')}</span>
-        <span className="text-red-400" title="Not attending">✕ {cnt(e.id, 'Not Attending') + cnt(e.id, 'Not Attending Event')}</span>
+        <span className="text-emerald-700 dark:text-emerald-400" title="Expected arrival">✓ {cnt(e.id, 'Expected Arrival')}</span>
+        <span className="text-yellow-700 dark:text-yellow-400" title="Maybe">? {cnt(e.id, 'Maybe')}</span>
+        <span className="text-red-700 dark:text-red-400" title="Not attending">✕ {cnt(e.id, 'Not Attending') + cnt(e.id, 'Not Attending Event')}</span>
             </div>
             <div className="flex flex-wrap gap-1">
         {e.date && (
@@ -105,8 +105,8 @@ export default function AdminEvents({ showId: fixedShowId }: { showId?: string }
           </Button>
         )}
         <Button size="sm" variant="outline" onClick={() => setViewing(e.id)}><Users className="h-4 w-4 mr-1" />Attendance</Button>
-        <Button size="icon" variant="ghost" onClick={() => setEvDlg({ ev: e })}><Pencil className="h-4 w-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => setConfirm({ kind: 'ev', id: e.id, name: e.title })}><Trash2 className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title={`Edit ${e.title}`} aria-label={`Edit ${e.title}`} onClick={() => setEvDlg({ ev: e })}><Pencil className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title={`Delete ${e.title}`} aria-label={`Delete ${e.title}`} onClick={() => setConfirm({ kind: 'ev', id: e.id, name: e.title })}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </div>
   );
@@ -188,13 +188,13 @@ export default function AdminEvents({ showId: fixedShowId }: { showId?: string }
               <p className="text-xs font-mono text-muted-foreground mt-1">{dueLabel(show.dueDate, show.dueUnknown)}</p>
               <div className="flex flex-wrap gap-2 mt-3 text-sm">
                 {show.hidden && (
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-400">
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
                     <EyeOff className="h-3 w-3 mr-1" />Hidden from members
                   </Badge>
                 )}
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">Yes {rc('Yes')}</Badge>
-                <Badge variant="outline" className="border-yellow-500/40 text-yellow-400">Maybe {rc('Maybe')}</Badge>
-                <Badge variant="outline" className="border-red-500/40 text-red-400">No {rc('No')}</Badge>
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Yes {rc('Yes')}</Badge>
+                <Badge variant="outline" className="border-yellow-500/40 text-yellow-700 dark:text-yellow-400">Maybe {rc('Maybe')}</Badge>
+                <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-400">No {rc('No')}</Badge>
                 <Badge variant="outline">No reply {data.members.length - resp.length}</Badge>
               </div>
             </div>

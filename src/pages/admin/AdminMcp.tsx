@@ -298,7 +298,7 @@ export default function AdminMcp() {
                       {l.detail && <p className="mt-0.5 max-w-md text-xs text-muted-foreground">{l.detail}</p>}
                     </td>
                     <td className="px-4 py-2">
-                      <span className={l.ok ? 'text-emerald-400' : 'text-red-400'}>{l.ok ? 'ok' : 'failed'}</span>
+                      <span className={l.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}>{l.ok ? 'ok' : 'failed'}</span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">{l.ms} ms</td>
                   </tr>

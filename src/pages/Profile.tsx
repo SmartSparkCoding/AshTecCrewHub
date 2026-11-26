@@ -191,7 +191,7 @@ export default function Profile() {
               v={mentor ? (
                 <span>
                   {mentor.firstName}{mentor.lastName ? ' ' + mentor.lastName : ''}
-                  {mentor.email && <> · <a className="underline hover:text-foreground" href={`mailto:${mentor.email}`}>{mentor.email}</a></>}
+                  {mentor.email && <> · <a className="break-all underline hover:text-foreground" href={`mailto:${mentor.email}`}>{mentor.email}</a></>}
                 </span>
               ) : null}
             />
@@ -545,9 +545,9 @@ function EmergencySignIn() {
       <div className="flex items-center gap-2 text-sm">
         <span className="font-medium">Status</span>
         {hasSecret ? (
-          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400"><KeyRound className="h-3 w-3 mr-1" />Set</Badge>
+          <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400"><KeyRound className="h-3 w-3 mr-1" />Set</Badge>
         ) : (
-          <Badge variant="outline" className="border-amber-500/40 text-amber-400">Not set</Badge>
+          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Not set</Badge>
         )}
       </div>
 
@@ -689,7 +689,7 @@ function PwaSettings() {
           <p className="text-sm font-medium">Notifications</p>
           <p className="text-xs text-muted-foreground">{stateLabel[notif]}</p>
         </div>
-        <Badge variant="outline" className={notif === 'granted' ? 'border-emerald-500/40 text-emerald-400' : undefined}>
+        <Badge variant="outline" className={notif === 'granted' ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400' : undefined}>
           {notif === 'granted' ? 'On' : 'Off'}
         </Badge>
       </div>
@@ -727,7 +727,7 @@ function PwaSettings() {
         </p>
       )}
 
-      {note && <p className="text-xs text-amber-400">{note}</p>}
+      {note && <p className="text-xs text-amber-700 dark:text-amber-400">{note}</p>}
 
       <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
         <Button

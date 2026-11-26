@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Cat, X } from 'lucide-react';
 import { MASCOT } from '../lib/mascot';
 import { useAppSettings } from '../lib/appSettings';
@@ -22,6 +22,9 @@ import { useCatWardrobe } from '../lib/catWardrobe';
  * to stay.
  */
 export default function CatCompanion() {
+  // The little hop is decoration; someone who asked their machine to calm down
+  // should get a still cat rather than a bouncing one.
+  const reduceMotion = useReducedMotion();
   const [hidden, setCatHidden] = useCatHidden();
   /**
    * Tickets 10017d4f / d46defd1: whatever the cat has bought from the shop is
@@ -235,14 +238,18 @@ export default function CatCompanion() {
               height={58}
               draggable={false}
               animate={
-                eating
+                eating && !reduceMotion
                   ? { scale: [1, 1.12, 0.96, 1.1, 1], rotate: [0, -4, 4, -2, 0] }
-                  : { y: [0, -4, 0] }
+                  : reduceMotion
+                    ? { y: 0 }
+                    : { y: [0, -4, 0] }
               }
               transition={
-                eating
+                eating && !reduceMotion
                   ? { duration: 0.9, ease: 'easeInOut' }
-                  : { repeat: Infinity, duration: 3.4, ease: 'easeInOut' }
+                  : reduceMotion
+                    ? { duration: 0 }
+                    : { repeat: Infinity, duration: 3.4, ease: 'easeInOut' }
               }
               className="h-14 w-14 drop-shadow-lg transition-transform hover:scale-105"
             />

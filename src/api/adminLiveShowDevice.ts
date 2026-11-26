@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { findMemberByEmail, requireAdmin } from '../lib/server';
 import { openLiveShow, mapDevice } from '../lib/liveShow';
@@ -39,19 +39,19 @@ export default createEndpoint({
       const secret = input.secret ?? '';
       const member = email ? await findMemberByEmail(email) : undefined;
       if (!member?.isAdmin || !secret || !(await verifyAdminSecret(email, secret))) {
-        throw new Error('Admins only.');
+        throw new ZiteError('Admins only.', 'FORBIDDEN');
       }
     }
     const liveShow = input.liveShowId
       ? await zite.liveShows.findOne({ id: input.liveShowId })
       : await openLiveShow();
-    if (!liveShow) throw new Error('No live show is open.');
+    if (!liveShow) throw new ZiteError('No live show is open.', 'BAD_REQUEST');
     const device = input.deviceId
       ? await zite.liveShowDevices.findOne({ id: input.deviceId })
       : input.deviceKey
         ? await zite.liveShowDevices.findOne({ filters: { liveShowId: liveShow.id, deviceKey: input.deviceKey } })
         : undefined;
-    if (!device) throw new Error('That screen was not found.');
+    if (!device) throw new ZiteError('That screen was not found.', 'NOT_FOUND');
     if (input.remove) {
       await zite.liveShowDevices.delete({ id: String(device.id) });
       return { device: null, removed: true };

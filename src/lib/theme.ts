@@ -87,11 +87,26 @@ function clearVars() {
   for (const [key] of Object.entries(themeVars('ashtec', 'amber'))) root.removeProperty(key);
 }
 
+/**
+ * Paint the phone's own chrome to match the page. index.html sets one
+ * <meta name="theme-color"> for the dark look, so a member on a light theme got
+ * a black status bar over a cream page: it reads as a bug on every screen they
+ * open. The value has to follow the colour variables, wherever they came from
+ * (a built-in theme, a look they saved, or one an AI made).
+ */
+function syncThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+  meta.setAttribute('content', bg ? `hsl(${bg})` : '#0c0d13');
+}
+
 /** Inline styles beat the `:root`/`.dark` rules, so one pass restyles the app. */
 export function applyVars(vars: Record<string, string>) {
   clearVars();
   const root = document.documentElement.style;
   for (const [key, value] of Object.entries(vars)) root.setProperty(key, value);
+  syncThemeColor();
 }
 
 /**
@@ -111,6 +126,7 @@ export function getThemeMode(): ThemeMode {
 function applyThemeMode(mode: ThemeMode) {
   document.documentElement.classList.toggle('dark', mode === 'dark');
   document.documentElement.dataset.mode = mode;
+  syncThemeColor();
 }
 
 function varsForMode(vars: Record<string, string>, mode: ThemeMode, themeId: string) {
@@ -132,6 +148,10 @@ function varsForMode(vars: Record<string, string>, mode: ThemeMode, themeId: str
       '--accent-foreground': '30 80% 25%',
       '--border': '40 10% 86%',
       '--input': '40 10% 86%',
+      // The ring is amber by default, which is invisible on cream: nothing
+      // caught it because the ring only shows when something is focused and
+      // nobody had tabbed through the app in light mode.
+      '--ring': '36 80% 38%',
       '--sidebar-background': '0 0% 98%',
       '--sidebar-foreground': '240 5.3% 26.1%',
       '--sidebar-accent': '240 4.8% 95.9%',
@@ -228,12 +248,14 @@ export function applyChoice(choice: Choice = getChoice()) {
     }
     setThemeAttr(DEFAULT_CHOICE.theme);
     clearVars();
+    syncThemeColor();
     return;
   }
   if (choice.theme === DEFAULT_CHOICE.theme && choice.palette === DEFAULT_CHOICE.palette) {
     // Nothing picked yet: the stylesheet is already the original.
     clearVars();
     setThemeAttr(DEFAULT_CHOICE.theme);
+    syncThemeColor();
     return;
   }
   applyVars(varsForMode(themeVars(choice.theme, choice.palette), mode, choice.theme));

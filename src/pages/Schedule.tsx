@@ -102,13 +102,13 @@ function Card({ children }: { children: React.ReactNode }) { return <div classNa
 function Empty({ children }: { children: React.ReactNode }) { return <p className="text-sm text-muted-foreground">{children}</p>; }
 
 function Clashes({ data }: { data: Sched }) {
-  if (!data.clashes.length) return <Card><p className="text-sm text-emerald-500 font-medium">No clashes. Nothing you are down for overlaps with anything else, and nothing lands on a day you said you were busy.</p></Card>;
+  if (!data.clashes.length) return <Card><p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">No clashes. Nothing you are down for overlaps with anything else, and nothing lands on a day you said you were busy.</p></Card>;
   return (
     <div className="space-y-3">
       {data.clashes.map((c, i) => (
         <Card key={i}>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={cn(c.kind === 'unavailable' ? 'border-amber-500 text-amber-500' : 'border-red-500 text-red-500')}>{c.kind === 'unavailable' ? 'Unavailable' : 'Overlap'}</Badge>
+            <Badge variant="outline" className={cn(c.kind === 'unavailable' ? 'border-amber-500 text-amber-700 dark:text-amber-400' : 'border-red-500 text-red-700 dark:text-red-400')}>{c.kind === 'unavailable' ? 'Unavailable' : 'Overlap'}</Badge>
             <span className="font-medium">{c.date}</span>
           </div>
           <p className="text-sm text-muted-foreground">{c.reason}</p>
@@ -146,7 +146,7 @@ function Term({ data, act, isAdmin }: { data: Sched; act: ActFn; isAdmin: boolea
               {data.blackouts.map((b) => (
                 <span key={b.id} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs">
                   {b.label || 'Blackout'} · {b.startDate}{b.endDate && b.endDate !== b.startDate ? ` – ${b.endDate}` : ''}
-                  <button onClick={() => act(() => saveBlackout({ id: b.id, remove: true }), 'Removed')} className="hover:text-red-500"><Trash2 className="h-3 w-3" /></button>
+                  <button onClick={() => act(() => saveBlackout({ id: b.id, remove: true }), 'Removed')} className="hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3 w-3" /></button>
                 </span>
               ))}
             </div>
@@ -163,7 +163,7 @@ function Term({ data, act, isAdmin }: { data: Sched; act: ActFn; isAdmin: boolea
               return (
                 <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
                   <span><span className="font-mono text-muted-foreground mr-2">{e.date ?? 'TBC'}</span>{e.title}{e.showName && <span className="text-muted-foreground"> · {e.showName}</span>}</span>
-                  {blocked && <Badge variant="outline" className="border-amber-500 text-amber-500">Exam period</Badge>}
+                  {blocked && <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">Exam period</Badge>}
                 </li>
               );
             })}
@@ -198,7 +198,7 @@ function Availability({ data, act }: { data: Sched; act: ActFn }) {
         {data.availability.map((a) => (
           <div key={a.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
             <span><span className="font-mono">{a.date}</span> · {a.allDay ? 'All day' : `${a.fromTime}–${a.toTime}`}{a.reason && <span className="text-muted-foreground"> · {a.reason}</span>}</span>
-            <button onClick={() => act(() => saveAvailability({ id: a.id, remove: true }), 'Removed')} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => act(() => saveAvailability({ id: a.id, remove: true }), 'Removed')} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         ))}
       </div>
@@ -236,7 +236,7 @@ function Rotas({ data, act, isAdmin }: { data: Sched; act: ActFn; isAdmin: boole
               {r.signedUp
                 ? <Button size="sm" variant="outline" onClick={() => act(() => claimRotaSlot({ slotId: r.id, release: true }), 'Stepped down')}>Release</Button>
                 : <Button size="sm" disabled={r.taken >= r.capacity} onClick={() => act(() => claimRotaSlot({ slotId: r.id }), 'You are on the rota')}>{r.taken >= r.capacity ? 'Full' : 'Sign up'}</Button>}
-              {isAdmin && <button onClick={() => act(() => saveRotaSlot({ id: r.id, remove: true }), 'Slot removed')} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {isAdmin && <button onClick={() => act(() => saveRotaSlot({ id: r.id, remove: true }), 'Slot removed')} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
             </span>
           </div>
         ))}

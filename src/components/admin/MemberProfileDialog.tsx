@@ -20,20 +20,20 @@ import RemindButton from './RemindButton';
  */
 
 const AT_STYLE: Record<string, string> = {
-  'Expected Arrival': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  Maybe: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  'Not Attending': 'bg-red-500/15 text-red-400 border-red-500/30',
+  'Expected Arrival': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  Maybe: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+  'Not Attending': 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
 };
 const RESP_STYLE: Record<string, string> = {
-  Yes: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  No: 'bg-red-500/15 text-red-400 border-red-500/30',
-  Maybe: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+  Yes: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  No: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+  Maybe: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
 };
 const PRES_STYLE: Record<string, string> = {
-  'On Site': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'On Site': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
   'Off Site': 'bg-muted text-muted-foreground border-border',
-  'Expected Back': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  'Not at Venue': 'bg-red-500/15 text-red-400 border-red-500/30',
+  'Expected Back': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+  'Not at Venue': 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
 };
 
 const dt = (iso: string | null) =>

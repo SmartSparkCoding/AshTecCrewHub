@@ -51,9 +51,9 @@ type Row = {
 
 /** Green is in, yellow is away for a while, red is not in at all. */
 const MARKS = [
-  { key: 'green' as const, label: 'In', icon: Check, on: 'border-emerald-500 bg-emerald-500 text-white', off: 'border-emerald-500/40 text-emerald-500' },
-  { key: 'yellow' as const, label: 'Away', icon: Clock, on: 'border-amber-500 bg-amber-500 text-white', off: 'border-amber-500/40 text-amber-500' },
-  { key: 'red' as const, label: 'Not in', icon: X, on: 'border-rose-500 bg-rose-500 text-white', off: 'border-rose-500/40 text-rose-500' },
+  { key: 'green' as const, label: 'In', icon: Check, on: 'border-emerald-500 bg-emerald-500 text-white', off: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400' },
+  { key: 'yellow' as const, label: 'Away', icon: Clock, on: 'border-amber-500 bg-amber-500 text-white', off: 'border-amber-500/40 text-amber-700 dark:text-amber-400' },
+  { key: 'red' as const, label: 'Not in', icon: X, on: 'border-rose-500 bg-rose-500 text-white', off: 'border-rose-500/40 text-rose-700 dark:text-rose-400' },
 ];
 
 // A school register wants the same handful of reasons every time, so they are
@@ -337,7 +337,7 @@ export default function AdminCheckIn() {
   }
 
   if (problem && !pick && !roster) {
-    return <div className="p-6 text-sm text-red-400">{problem}</div>;
+    return <div className="p-6 text-sm text-red-700 dark:text-red-400">{problem}</div>;
   }
 
   // ---------------------------------------------------------------- picker
@@ -353,7 +353,7 @@ export default function AdminCheckIn() {
 
         {pick?.openSession && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm">
-            <DoorOpen className="h-4 w-4 text-emerald-400" />
+            <DoorOpen className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span className="font-medium">Door check-in open:</span>
             <span className="text-muted-foreground">{pick.openSession.title}</span>
           </div>
@@ -417,13 +417,13 @@ export default function AdminCheckIn() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />{roster.counts.green} in
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
             <span className="h-2 w-2 rounded-full bg-amber-500" />{roster.counts.yellow} away
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-400">
             <span className="h-2 w-2 rounded-full bg-rose-500" />{roster.counts.red} not in
           </span>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{roster.counts.none} to mark</span>
@@ -445,7 +445,7 @@ export default function AdminCheckIn() {
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">Register only</span>
           )}
           {doorOpenHere && (
-            <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400">Door open</span>
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Door open</span>
           )}
         </div>
       </header>
@@ -479,7 +479,7 @@ export default function AdminCheckIn() {
 
       {waiting.length > 0 && (
         <section className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-400">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
             <Clock className="h-4 w-4" />Waiting on you ({waiting.length})
           </h2>
           <ul className="mt-2 space-y-2">
@@ -528,11 +528,11 @@ export default function AdminCheckIn() {
               {m.reason && (
                 <p className={cn(
                   'mt-0.5 truncate text-xs font-medium',
-                  m.state === 'yellow' ? 'text-amber-500' : m.state === 'red' ? 'text-rose-500' : 'text-muted-foreground',
+                  m.state === 'yellow' ? 'text-amber-700 dark:text-amber-400' : m.state === 'red' ? 'text-rose-700 dark:text-rose-400' : 'text-muted-foreground',
                 )}>
                   {m.reason}
                   {m.returnAt && (
-                    <span className={m.overdue ? 'text-rose-500' : 'text-muted-foreground'}>
+                    <span className={m.overdue ? 'text-rose-700 dark:text-rose-400' : 'text-muted-foreground'}>
                       {' · '}
                       {m.overdue ? `not back yet (was due ${hhmm(m.returnAt)})` : `back by ${hhmm(m.returnAt)}`}
                     </span>
@@ -574,7 +574,7 @@ export default function AdminCheckIn() {
 
       {inRoom.length > 0 && (
         <section className="rounded-xl border p-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-emerald-400" />In the room ({inRoom.length})</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />In the room ({inRoom.length})</h2>
           <p className="mt-1 text-xs text-muted-foreground">{inRoom.map((r) => r.name).join(', ')}</p>
         </section>
       )}

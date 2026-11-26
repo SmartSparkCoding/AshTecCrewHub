@@ -57,8 +57,8 @@ export default function MyEvents() {
       {data.shows.length === 0 && <p className="text-muted-foreground">No shows have been set up yet.</p>}
       {clashes > 0 && (
         <Link to="/schedule" className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm hover:bg-amber-500/20">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-          <span><span className="font-semibold text-amber-500">{clashes}</span> scheduling clash{clashes > 1 ? 'es' : ''} need a look. See the Schedule page.</span>
+          <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0" />
+          <span><span className="font-semibold text-amber-700 dark:text-amber-400">{clashes}</span> scheduling clash{clashes > 1 ? 'es' : ''} need a look. See the Schedule page.</span>
         </Link>
       )}
       <OpeningCountdown />

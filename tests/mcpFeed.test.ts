@@ -126,7 +126,9 @@ test('the feed is capped, so nobody subscribes to a wall of text', () => {
 test('the route refuses a wrong key instead of explaining itself', () => {
   const index = readFileSync(new URL('../server/index.ts', import.meta.url), 'utf8');
   assert.match(index, /app\.get\('\/mcp\/feed\/:name'/);
-  assert.ok(index.includes("if (!key || given !== key) return res.status(404).type('text/plain').send('Not found');"));
+  // The key is compared as a digest pair, so a guess cannot be timed.
+  assert.match(index, /timingSafeEqual\(createHash\('sha256'\)\.update\(given\)/);
+  assert.ok(index.includes("if (!sameKey) return res.status(404).type('text/plain').send('Not found');"));
   assert.ok(index.includes("res.set('Content-Type', 'application/rss+xml; charset=utf-8')"));
 });
 

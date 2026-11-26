@@ -70,7 +70,7 @@ export default function Privacy() {
         </p>
 
         <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/[0.06] p-5">
-          <h2 className="font-semibold text-amber-500">Not affiliated with the school</h2>
+          <h2 className="font-semibold text-amber-700 dark:text-amber-400">Not affiliated with the school</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             The AshTec Crew Hub is an independent, student-run project. We are <strong className="text-foreground">in
             no way directly affiliated with, endorsed by, sponsored by or controlled by Ashford School</strong> (Kent),

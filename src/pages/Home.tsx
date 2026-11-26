@@ -178,7 +178,7 @@ function HomeInner() {
 
       {specialNote && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm flex items-start gap-2">
-          <Sparkles className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+          <Sparkles className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
           <span>{specialNote}</span>
         </div>
       )}
@@ -191,8 +191,11 @@ function HomeInner() {
             <p className="text-sm text-muted-foreground mt-1">{fmtDate(countdown!.date)}</p>
           </div>
           <div className="text-right">
-            <p className="text-4xl font-bold tabular-nums">{countdown!.days}</p>
-            <p className="text-xs text-muted-foreground">{countdown!.days === 1 ? 'day to go' : 'days to go'}</p>
+            {/* On the day itself the card used to read "0 days to go". */}
+            <p className="text-4xl font-bold tabular-nums">{countdown!.days === 0 ? 'Today' : countdown!.days}</p>
+            <p className="text-xs text-muted-foreground">
+              {countdown!.days === 0 ? 'good luck' : countdown!.days === 1 ? 'day to go' : 'days to go'}
+            </p>
           </div>
         </div>
       )}
@@ -235,8 +238,8 @@ function HomeInner() {
                   {!me.isStaff && (
                     <Badge variant="outline" className={cn('shrink-0 text-xs',
                       e.status === 'Expected Arrival' ? 'border-green-500/40 text-green-400' :
-                      e.status === 'Not Attending' ? 'border-red-500/40 text-red-400' :
-                      e.status === 'Maybe' ? 'border-amber-500/40 text-amber-400' : 'text-muted-foreground')}>
+                      e.status === 'Not Attending' ? 'border-red-500/40 text-red-700 dark:text-red-400' :
+                      e.status === 'Maybe' ? 'border-amber-500/40 text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
                       {STATUS_LABEL[e.status ?? ''] ?? 'No reply'}
                     </Badge>
                   )}
@@ -286,7 +289,7 @@ function HomeInner() {
               {news.map((a) => (
                 <li key={a.id} className="space-y-0.5">
                   <p className="text-sm font-medium flex items-center gap-1.5">
-                    {a.pinned && <span className="text-amber-400">📌</span>}{a.title}
+                    {a.pinned && <span className="text-amber-700 dark:text-amber-400">📌</span>}{a.title}
                   </p>
                   <p className="text-xs text-muted-foreground line-clamp-2">{a.body}</p>
                   <p className="text-xs text-muted-foreground">{relTime(a.createdAt)}</p>

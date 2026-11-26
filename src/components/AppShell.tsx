@@ -87,7 +87,7 @@ function GlowNote({ text, align = 'left', className, children }: {
         <span
           role="tooltip"
           className={cn(
-            'absolute top-full z-50 mt-2 w-max max-w-xs rounded-xl border border-amber-300/40 bg-[#10131a] p-3 text-xs leading-relaxed text-amber-100 shadow-[0_8px_30px_rgba(0,0,0,0.5)]',
+            'absolute top-full z-50 mt-2 w-max max-w-xs rounded-xl border border-border bg-popover p-3 text-xs leading-relaxed text-popover-foreground shadow-lg',
             align === 'right' ? 'right-0' : 'left-0',
           )}
         >
@@ -697,7 +697,7 @@ function tabsFor(items: NavItem[], onMore: () => void) {
         >
           <span className="relative">
             <i.icon className="h-5 w-5" />
-            {i.live && <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-label="check-in is open" />}
+            {i.live && <span role="status" className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-label="check-in is open" />}
           </span>
           {i.label}
         </NavLink>
@@ -737,7 +737,7 @@ function NavRow({ item, collapsed, compact, onNavigate }: {
       <item.icon className={cn('shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
       {!collapsed && <span className="truncate">{item.label}</span>}
       {item.live && (
-        <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-label="check-in is open" />
+        <span role="status" className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-label="check-in is open" />
       )}
       {!collapsed && item.badge ? (
         <span className="ml-auto min-w-4 h-4 px-1 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-semibold inline-flex items-center justify-center">
@@ -745,7 +745,7 @@ function NavRow({ item, collapsed, compact, onNavigate }: {
         </span>
       ) : null}
       {collapsed && item.badge ? (
-        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-400" aria-label={`${item.badge} waiting`} />
+        <span role="status" className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-400" aria-label={`${item.badge} waiting`} />
       ) : null}
     </NavLink>
   );

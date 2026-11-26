@@ -251,6 +251,7 @@ CREATE TABLE IF NOT EXISTS "SupportReplies" (
   "replyKey"         text NOT NULL DEFAULT '',
   "ticket"           uuid,
   "author"           uuid,
+  "authorName"       text NOT NULL DEFAULT '',
   "kind"             text NOT NULL DEFAULT '',
   "body"             text NOT NULL DEFAULT '',
   "recipients"       text NOT NULL DEFAULT '',
@@ -260,6 +261,7 @@ CREATE TABLE IF NOT EXISTS "SupportReplies" (
   "updatedAt"        timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS "SupportReplies_ticket_idx" ON "SupportReplies" ("ticket");
+ALTER TABLE "SupportReplies" ADD COLUMN IF NOT EXISTS "authorName" text NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS "EmailLog" (
   "id"              uuid PRIMARY KEY,

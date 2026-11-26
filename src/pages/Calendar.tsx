@@ -245,7 +245,7 @@ export default function Calendar() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {e.hidden && <span className="flex items-center gap-1 text-[11px] text-amber-400"><EyeOff className="h-3.5 w-3.5" /> Hidden</span>}
+          {e.hidden && <span className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400"><EyeOff className="h-3.5 w-3.5" /> Hidden</span>}
           {me.isAdmin && <Button size="sm" variant="ghost" onClick={() => setEditEvent(e as unknown as AdminSubEvent)}>Edit</Button>}
         </div>
       </div>
@@ -500,7 +500,7 @@ export default function Calendar() {
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">{e.title}</span>
-                  {e.hidden && <EyeOff className="h-3.5 w-3.5 text-amber-400 shrink-0" />}
+                  {e.hidden && <EyeOff className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400 shrink-0" />}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {e.subtype || e.type} · {showName(e) || 'No show'}

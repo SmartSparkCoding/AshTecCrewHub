@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
-import { claimSignals, liveShowForVideo, loadVideoPeers, sweepSignals } from '../lib/stageVideo';
+import { claimSignals, liveShowForVideo, loadVideoPeers, sweepSignals, sweepVideoPeers } from '../lib/stageVideo';
 
 /**
  * Ticket 7e928a80. One poll per device, twice a second while video is in use:
@@ -37,7 +37,7 @@ export default createEndpoint({
   }),
   execute: async ({ input }) => {
     const show = await liveShowForVideo(input.liveShowId);
-    if (!show) throw new Error('No show is open, so there is nothing to stream.');
+    if (!show) throw new ZiteError('No show is open, so there is nothing to stream.', 'BAD_REQUEST');
     const liveShowId = String(show.id);
 
     // A device only exists here once it has joined, and joining is what this is.
@@ -71,6 +71,7 @@ export default createEndpoint({
       loadVideoPeers(liveShowId),
       claimSignals(liveShowId, input.deviceKey),
       sweepSignals(liveShowId),
+      sweepVideoPeers(),
     ]);
     const mine = peers.find((p) => p.deviceKey === input.deviceKey);
     return {

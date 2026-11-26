@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { requireMember, findMemberByEmail } from '../lib/server';
 import { openLiveShow, activeAnnouncements, loadLiveShowMessages } from '../lib/liveShow';
@@ -30,20 +30,20 @@ export default createEndpoint({
     const liveShow = input.liveShowId
       ? await zite.liveShows.findOne({ id: input.liveShowId })
       : await openLiveShow();
-    if (!liveShow) throw new Error('No live show is open.');
+    if (!liveShow) throw new ZiteError('No live show is open.', 'BAD_REQUEST');
     let adminId: string;
     let authorName: string;
     if (context.user) {
       const admin = await requireMember(context.user.email);
-      if (!admin.isAdmin) throw new Error('Admins only.');
+      if (!admin.isAdmin) throw new ZiteError('Admins only.', 'FORBIDDEN');
       adminId = admin.id;
       authorName = `${admin.firstName ?? ''} ${admin.lastName ?? ''}`.trim() || 'Admin';
     } else {
       const email = await credentialEmail(input.email, input.memberId);
       const secret = input.secret ?? '';
-      if (!email || !secret) throw new Error('Sign in, or give an admin email and cat-login secret.');
+      if (!email || !secret) throw new ZiteError('Sign in, or give an admin email and cat-login secret.', 'UNAUTHORIZED');
       const member = await findMemberByEmail(email);
-      if (!member?.isAdmin || !(await verifyAdminSecret(email, secret))) throw new Error('Those admin details are not right.');
+      if (!member?.isAdmin || !(await verifyAdminSecret(email, secret))) throw new ZiteError('Those admin details are not right.', 'FORBIDDEN');
       adminId = member.id;
       authorName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || 'Admin';
     }
@@ -58,7 +58,7 @@ export default createEndpoint({
     }
 
     const body = (input.body ?? '').trim().slice(0, BODY_MAX);
-    if (!body) throw new Error('Write the announcement first.');
+    if (!body) throw new ZiteError('Write the announcement first.', 'BAD_REQUEST');
     // 0 = until cleared; otherwise 2 to 145 seconds.
     const seconds = input.seconds ? Math.min(145, Math.max(2, Math.floor(input.seconds))) : 0;
     const expiresAt = seconds > 0 ? new Date(Date.now() + seconds * 1000).toISOString() : null;

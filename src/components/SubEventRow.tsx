@@ -53,10 +53,10 @@ export default function SubEventRow({ ev, onPick, disabled, showInvite, readOnly
             <p className="text-sm flex gap-1"><Backpack className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />Bring: {ev.thingsToBring}</p>
           )}
           <p className="text-xs text-muted-foreground font-mono">{dueLabel(ev.dueDate, ev.dueUnknown)}</p>
-          {ev.status === 'Not Attending' && ev.reason && <p className="text-xs text-red-400">Reason: {ev.reason}</p>}
+          {ev.status === 'Not Attending' && ev.reason && <p className="text-xs text-red-700 dark:text-red-400">Reason: {ev.reason}</p>}
         </div>
         {readOnly ? (
-          <Badge variant="outline" className="shrink-0 border-emerald-500/40 text-emerald-400">Register only</Badge>
+          <Badge variant="outline" className="shrink-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Register only</Badge>
         ) : (
           <div className="flex gap-1.5">
             {OPTIONS.map((o) => (

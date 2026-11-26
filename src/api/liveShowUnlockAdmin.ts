@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { findMemberByEmail } from '../lib/server';
 import { verifyAdminSecret, credentialEmail } from '../../server/catLogin.js';
 
@@ -28,10 +28,10 @@ export default createEndpoint({
   }),
   execute: async ({ input }) => {
     const email = await credentialEmail(input.email, input.memberId);
-    if (!email) throw new Error('Pick which admin is unlocking the controls.');
+    if (!email) throw new ZiteError('Pick which admin is unlocking the controls.', 'BAD_REQUEST');
     const member = await findMemberByEmail(email);
     if (!member?.isAdmin || !(await verifyAdminSecret(email, input.pin))) {
-      throw new Error('Those admin details are not right.');
+      throw new ZiteError('Those admin details are not right.', 'FORBIDDEN');
     }
     const name = `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || 'Admin';
     return { admin: { id: String(member.id), name, email } };

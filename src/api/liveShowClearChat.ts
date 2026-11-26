@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { requireMember, findMemberByEmail } from '../lib/server';
 import { openLiveShow, loadLiveShowMessages } from '../lib/liveShow';
@@ -30,18 +30,18 @@ export default createEndpoint({
     const liveShow = input.liveShowId
       ? await zite.liveShows.findOne({ id: input.liveShowId })
       : await openLiveShow();
-    if (!liveShow) throw new Error('No live show is open.');
+    if (!liveShow) throw new ZiteError('No live show is open.', 'BAD_REQUEST');
 
     if (context.user) {
       const me = await requireMember(context.user.email);
-      if (!me.isAdmin) throw new Error('Only admins can clear the live show chat.');
+      if (!me.isAdmin) throw new ZiteError('Only admins can clear the live show chat.', 'FORBIDDEN');
     } else {
       const email = await credentialEmail(input.email, input.memberId);
       const secret = input.secret ?? '';
-      if (!email || !secret) throw new Error('Sign in, or give an admin email and cat-login secret.');
+      if (!email || !secret) throw new ZiteError('Sign in, or give an admin email and cat-login secret.', 'UNAUTHORIZED');
       const member = await findMemberByEmail(email);
-      if (!member?.isAdmin) throw new Error('Only admins can clear the live show chat.');
-      if (!(await verifyAdminSecret(email, secret))) throw new Error('Those admin details are not right.');
+      if (!member?.isAdmin) throw new ZiteError('Only admins can clear the live show chat.', 'FORBIDDEN');
+      if (!(await verifyAdminSecret(email, secret))) throw new ZiteError('Those admin details are not right.', 'FORBIDDEN');
     }
 
     const { records } = await zite.liveShowMessages.findAll({ filters: { liveShowId: liveShow.id }, limit: 500 });

@@ -13,10 +13,10 @@ import { CircleCheck, Clock, DoorOpen, Loader2, LogOut, MapPin, TriangleAlert, X
 import { cn } from '@project/components/lib/utils';
 
 const STATE_STYLE: Record<string, string> = {
-  'On Site': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'On Site': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
   'Off Site': 'bg-muted text-muted-foreground border-border',
-  'Expected Back': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  'Not at Venue': 'bg-red-500/15 text-red-400 border-red-500/30',
+  'Expected Back': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+  'Not at Venue': 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
 };
 
 const clock = (iso: string | null) =>
@@ -180,7 +180,7 @@ export default function Attendance() {
         <>
           <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-4">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Check-in open
               </span>
               <p className="font-semibold">{session.title}</p>
@@ -192,7 +192,7 @@ export default function Attendance() {
 
           {pending ? (
             <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/[0.05] p-5">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-yellow-400">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-yellow-700 dark:text-yellow-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Waiting for an admin to {pending.toLowerCase() === 'check out' ? 'check you out' : 'check you in'}
               </h2>
@@ -227,14 +227,14 @@ export default function Attendance() {
                       <span className="text-sm text-muted-foreground">since {clock(mine.signedInAt)}</span>
                     )}
                     {markedIn && (
-                      <span className="flex items-center gap-1 text-sm text-emerald-400">
+                      <span className="flex items-center gap-1 text-sm text-emerald-700 dark:text-emerald-400">
                         <CircleCheck className="h-3.5 w-3.5" />
                         on the register
                       </span>
                     )}
                     {registerNote && <span className="text-sm text-muted-foreground">{registerNote}</span>}
                     {mine?.comingBack && mine.expectedBackAt && (
-                      <span className="flex items-center gap-1 text-sm text-yellow-400">
+                      <span className="flex items-center gap-1 text-sm text-yellow-700 dark:text-yellow-400">
                         <Clock className="h-3.5 w-3.5" />
                         {backLabel(mine.expectedBackAt)}
                       </span>

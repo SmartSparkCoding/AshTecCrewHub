@@ -453,7 +453,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="font-semibold flex items-center gap-2"><Power className="h-4 w-4" />Show</h2>
           {ls?.open ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />Live now
             </span>
           ) : (
@@ -534,7 +534,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
                   <Pencil className="h-4 w-4 text-muted-foreground" />
                   <h3 className="text-sm font-semibold">{selected.name || 'Unnamed screen'}</h3>
                   <span className="ml-auto text-xs text-muted-foreground">{selected.platform || 'Unknown'} · since {timeOf(selected.connectedSince)}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setSelectedDevice(null)}><X className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" title="Close the screen details" aria-label="Close the screen details" onClick={() => setSelectedDevice(null)}><X className="h-3.5 w-3.5" /></Button>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -590,7 +590,7 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
           <div className="max-h-64 overflow-y-auto divide-y rounded-md border text-sm">
             {touches.map((t) => (
               <div key={t.id} className="flex items-center gap-3 px-3 py-2">
-                <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', t.kind === 'key' ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400')}>{t.kind}</span>
+                <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', t.kind === 'key' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400 dark:text-sky-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 dark:text-amber-400')}>{t.kind}</span>
                 <span className="font-medium">{t.deviceName || 'Unnamed screen'}</span>
                 <span className="ml-auto text-xs text-muted-foreground">{timeOf(t.createdAt)}</span>
               </div>
@@ -773,12 +773,12 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-muted-foreground">{i + 1}</span>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={i === 0} onClick={() => setRows((r) => { const c = [...r]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; })}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={i === rows.length - 1} onClick={() => setRows((r) => { const c = [...r]; [c[i + 1], c[i]] = [c[i], c[i + 1]]; return c; })}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Move this scene up" aria-label="Move this scene up" disabled={i === 0} onClick={() => setRows((r) => { const c = [...r]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; })}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Move this scene down" aria-label="Move this scene down" disabled={i === rows.length - 1} onClick={() => setRows((r) => { const c = [...r]; [c[i + 1], c[i]] = [c[i], c[i + 1]]; return c; })}><ArrowDown className="h-3.5 w-3.5" /></Button>
                   </div>
                   <div className="flex items-center gap-1 ml-auto">
                     {ls.currentSceneIndex === i && <span className="text-[10px] uppercase tracking-wide text-primary font-semibold px-1.5 py-0.5 rounded bg-primary/10">On stage</span>}
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setRows((r) => r.filter((_, idx) => idx !== i))}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Remove this scene" aria-label="Remove this scene" onClick={() => setRows((r) => r.filter((_, idx) => idx !== i))}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-[120px_1fr_100px] gap-3">

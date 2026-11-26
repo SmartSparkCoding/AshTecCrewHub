@@ -117,7 +117,7 @@ export default function ApprovePresence() {
       <Shell>
         <div className="space-y-5 text-center">
           {result.ok
-            ? <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" />
+            ? <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700 dark:text-emerald-400" />
             : <XCircle className="mx-auto h-12 w-12 text-muted-foreground" />}
           <h1 className="text-xl font-bold">{result.ok ? 'Done' : 'Not approved'}</h1>
           <p className="text-sm text-muted-foreground">{result.text}</p>
@@ -131,7 +131,7 @@ export default function ApprovePresence() {
     return (
       <Shell>
         <div className="space-y-5 text-center">
-          <TriangleAlert className="mx-auto h-10 w-10 text-amber-400" />
+          <TriangleAlert className="mx-auto h-10 w-10 text-amber-700 dark:text-amber-400" />
           <h1 className="text-xl font-bold">Can’t approve this</h1>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" className="w-full" onClick={load}>Try again</Button>
@@ -147,7 +147,7 @@ export default function ApprovePresence() {
     return (
       <Shell>
         <div className="space-y-5 text-center">
-          <TriangleAlert className="mx-auto h-10 w-10 text-amber-400" />
+          <TriangleAlert className="mx-auto h-10 w-10 text-amber-700 dark:text-amber-400" />
           <h1 className="text-xl font-bold">Another admin needs to scan this</h1>
           <p className="text-sm text-muted-foreground">
             Your account is not a crew admin, so you cannot approve this QR code. The member can keep the code open while an admin scans it.
@@ -161,7 +161,7 @@ export default function ApprovePresence() {
     return (
       <Shell>
         <div className="space-y-5 text-center">
-          <TriangleAlert className="mx-auto h-10 w-10 text-amber-400" />
+          <TriangleAlert className="mx-auto h-10 w-10 text-amber-700 dark:text-amber-400" />
           <h1 className="text-xl font-bold">This check-in session has ended</h1>
           <p className="text-sm text-muted-foreground">Ask the member to start a new check-in request.</p>
           <CancelButton onClick={goBack} />
@@ -173,7 +173,7 @@ export default function ApprovePresence() {
     return (
       <Shell>
         <div className="space-y-5 text-center">
-          <TriangleAlert className="mx-auto h-10 w-10 text-amber-400" />
+          <TriangleAlert className="mx-auto h-10 w-10 text-amber-700 dark:text-amber-400" />
           <h1 className="text-xl font-bold">This QR code is no longer valid</h1>
           <p className="text-sm text-muted-foreground">Ask the member to generate a new code.</p>
           <CancelButton onClick={goBack} />
@@ -261,13 +261,13 @@ export default function ApprovePresence() {
           {data.comingBack && data.expectedBackAt && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Back at</dt>
-              <dd className="font-medium text-yellow-400">{time(data.expectedBackAt)}</dd>
+              <dd className="font-medium text-yellow-700 dark:text-yellow-400">{time(data.expectedBackAt)}</dd>
             </div>
           )}
         </dl>
 
         {!signingIn && data.comingBack && data.expectedBackAt && (
-          <p className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-400">
+          <p className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
             Approving counts them as away until {time(data.expectedBackAt)}, not off site entirely.
           </p>
         )}

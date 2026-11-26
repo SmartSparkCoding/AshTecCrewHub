@@ -110,7 +110,7 @@ export default function ShowWorkspace() {
           )}
           <p className="text-xs text-muted-foreground mt-1">
             {done}/{ws.checklist.length} checklist · {ws.cues.length} cues · {ws.props.length} props · {ws.scenes.length} scenes
-            {openCovers > 0 && <> · <span className="text-amber-500">{openCovers} cover needed</span></>}
+            {openCovers > 0 && <> · <span className="text-amber-700 dark:text-amber-400">{openCovers} cover needed</span></>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -202,7 +202,7 @@ function Checklist({ ws, act }: { ws: Ws; act: ActFn }) {
               <input type="checkbox" checked={c.done} disabled={!ws.canEdit} className="h-4 w-4 accent-primary disabled:opacity-60" onChange={(e) => act(() => saveChecklistItem({ showId: ws.show.id, id: c.id, done: e.target.checked }))} />
               <span className={cn('flex-1 text-sm', c.done && 'line-through text-muted-foreground')}>{c.label}{c.notes && <span className="text-muted-foreground"> · {c.notes}</span>}</span>
               {c.done && c.doneByName && <span className="text-xs text-muted-foreground">{c.doneByName}</span>}
-              {ws.canDelete && <button onClick={() => act(() => saveChecklistItem({ showId: ws.show.id, id: c.id, remove: true }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {ws.canDelete && <button onClick={() => act(() => saveChecklistItem({ showId: ws.show.id, id: c.id, remove: true }))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
           ))}
         </div>
@@ -241,7 +241,7 @@ function Cues({ ws, act }: { ws: Ws; act: ActFn }) {
                 <td className="py-2 pr-3 text-muted-foreground">{c.standby}</td>
                 <td className="py-2 text-muted-foreground">
                   {c.go}
-                  {ws.canDelete && <button onClick={() => act(() => saveCue({ showId: ws.show.id, id: c.id, remove: true }))} className="ml-2 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5 inline" /></button>}
+                  {ws.canDelete && <button onClick={() => act(() => saveCue({ showId: ws.show.id, id: c.id, remove: true }))} className="ml-2 text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5 inline" /></button>}
                 </td>
               </tr>
             ))}
@@ -272,7 +272,7 @@ function Props({ ws, act }: { ws: Ws; act: ActFn }) {
           <div key={p.id} className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">{p.name} {p.quantity > 1 && <span className="text-muted-foreground">×{p.quantity}</span>}</span>
-              <Badge variant="outline" className={cn(p.status === 'Missing' && 'border-red-500 text-red-500', p.status === 'Available' && 'border-emerald-500 text-emerald-500')}>{p.status}</Badge>
+              <Badge variant="outline" className={cn(p.status === 'Missing' && 'border-red-500 text-red-700 dark:text-red-400', p.status === 'Available' && 'border-emerald-500 text-emerald-700 dark:text-emerald-400')}>{p.status}</Badge>
             </div>
             <div className="text-xs text-muted-foreground mt-1">{p.category}{p.location && ` · ${p.location}`}{p.holderName && ` · with ${p.holderName}`}</div>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -283,7 +283,7 @@ function Props({ ws, act }: { ws: Ws; act: ActFn }) {
                 <option value="">No holder</option>
                 {ws.members.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>)}
               </select>
-              {ws.canDelete && <button onClick={() => act(() => saveProp({ showId: ws.show.id, id: p.id, remove: true }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {ws.canDelete && <button onClick={() => act(() => saveProp({ showId: ws.show.id, id: p.id, remove: true }))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
           </div>
         ))}
@@ -392,7 +392,7 @@ function Mics({ ws, act }: { ws: Ws; act: ActFn }) {
                   <td className="py-2">
                     {ws.isAdmin && (
                       <button onClick={() => void act(() => saveMic({ showId: ws.show.id, id: m.id, remove: true }), 'Mic removed')}
-                        className="text-muted-foreground hover:text-red-500" aria-label={`Remove mic ${m.number}`}>
+                        className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400" aria-label={`Remove mic ${m.number}`}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -438,7 +438,7 @@ function Scenes({ ws, act }: { ws: Ws; act: ActFn }) {
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">{s.label}{s.label && s.title ? ' · ' : ''}{s.title}</span>
               <span className="text-xs text-muted-foreground">{s.minutes}m</span>
-              {ws.canDelete && <button onClick={() => act(() => saveShowScene({ showId: ws.show.id, id: s.id, remove: true }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {ws.canDelete && <button onClick={() => act(() => saveShowScene({ showId: ws.show.id, id: s.id, remove: true }))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
             {s.cast.length > 0 && <div className="text-xs text-muted-foreground mt-1">Cast: {s.cast.join(', ')}</div>}
           </div>
@@ -479,7 +479,7 @@ function Notes({ ws, act }: { ws: Ws; act: ActFn }) {
               <span>{n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : ''}</span>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{n.body}</p>
-            {ws.canEdit && <button onClick={() => act(() => saveRehearsalNote({ showId: ws.show.id, id: n.id, remove: true }))} className="text-xs text-muted-foreground hover:text-red-500 mt-1">Delete</button>}
+            {ws.canEdit && <button onClick={() => act(() => saveRehearsalNote({ showId: ws.show.id, id: n.id, remove: true }))} className="text-xs text-muted-foreground hover:text-red-700 dark:hover:text-red-400 mt-1">Delete</button>}
           </div>
         ))}
       </div>
@@ -609,7 +609,7 @@ function ShowDay({ ws, act }: { ws: Ws; act: ActFn }) {
           </div>
           {calls.map((c) => (
             <div key={c.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm mt-2">
-              <span>{c.byName} → {c.memberName}: {c.message}{c.ackedAt ? <span className="text-emerald-500"> · acked</span> : ''}</span>
+              <span>{c.byName} → {c.memberName}: {c.message}{c.ackedAt ? <span className="text-emerald-700 dark:text-emerald-400"> · acked</span> : ''}</span>
               {c.member === ws.meId && !c.ackedAt && <Button size="sm" variant="outline" onClick={() => act(() => ackCueCall({ id: c.id }), 'Acknowledged')}>Ack</Button>}
             </div>
           ))}
@@ -623,7 +623,7 @@ function ShowDay({ ws, act }: { ws: Ws; act: ActFn }) {
           </div>
           {covers.map((c) => (
             <div key={c.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm mt-2">
-              <span>{c.memberName} · <Badge variant="outline" className={cn(c.status === 'Open' && 'border-amber-500 text-amber-500')}>{c.status}</Badge> {c.role}{c.filledByName && ` → ${c.filledByName}`}</span>
+              <span>{c.memberName} · <Badge variant="outline" className={cn(c.status === 'Open' && 'border-amber-500 text-amber-700 dark:text-amber-400')}>{c.status}</Badge> {c.role}{c.filledByName && ` → ${c.filledByName}`}</span>
               <span className="flex gap-2">
                 {c.status === 'Open' && c.member !== ws.meId && <Button size="sm" onClick={() => act(() => respondCover({ id: c.id }), 'You are covering')}>I’ll cover</Button>}
                 {c.status === 'Open' && c.member === ws.meId && <Button size="sm" variant="outline" onClick={() => act(() => requestCover({ subEventId: eventId, id: c.id, remove: true }), 'Cancelled')}>Cancel</Button>}
@@ -662,7 +662,7 @@ function Photos({ media, act }: { media: Media; act: ActFn }) {
               <div className="truncate font-medium">{p.caption || p.scene || 'Backstage'}</div>
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="truncate">{p.byName}</span>
-                {(media.canDelete || p.createdBy === media.meId) && <button onClick={() => act(() => saveShowPhoto({ showId: media.showId, id: p.id, remove: true }))} className="hover:text-red-500"><Trash2 className="h-3 w-3" /></button>}
+                {(media.canDelete || p.createdBy === media.meId) && <button onClick={() => act(() => saveShowPhoto({ showId: media.showId, id: p.id, remove: true }))} className="hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3 w-3" /></button>}
               </div>
             </figcaption>
           </figure>
@@ -696,7 +696,7 @@ function Debrief({ media, act }: { media: Media; act: ActFn }) {
               <span>{d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-GB') : ''}</span>
             </div>
             <p className="mt-1 whitespace-pre-wrap text-sm">{d.body}</p>
-            {(media.canDelete || d.createdBy === media.meId) && <button onClick={() => act(() => saveDebrief({ showId: media.showId, id: d.id, remove: true }))} className="mt-1 text-xs text-muted-foreground hover:text-red-500">Delete</button>}
+            {(media.canDelete || d.createdBy === media.meId) && <button onClick={() => act(() => saveDebrief({ showId: media.showId, id: d.id, remove: true }))} className="mt-1 text-xs text-muted-foreground hover:text-red-700 dark:hover:text-red-400">Delete</button>}
           </div>
         ))}
       </div>
@@ -732,7 +732,7 @@ function GreenRoom({ media, act }: { media: Media; act: ActFn }) {
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {media.canEdit && <button onClick={() => act(() => saveGreenRoomNote({ showId: media.showId, id: g.id, pinned: !g.pinned }))} title={g.pinned ? 'Unpin' : 'Pin'} className={cn('rounded p-1 hover:bg-muted', g.pinned ? 'text-primary' : 'text-muted-foreground')}><Pin className="h-3.5 w-3.5" /></button>}
-                {(media.canDelete || g.createdBy === media.meId) && <button onClick={() => act(() => saveGreenRoomNote({ showId: media.showId, id: g.id, remove: true }))} className="rounded p-1 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+                {(media.canDelete || g.createdBy === media.meId) && <button onClick={() => act(() => saveGreenRoomNote({ showId: media.showId, id: g.id, remove: true }))} className="rounded p-1 text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
               </div>
             </div>
           </div>
@@ -760,7 +760,7 @@ function LostProperty({ media, act }: { media: Media; act: ActFn }) {
           <div key={l.id} className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium text-sm">{l.item}</span>
-              <Badge variant="outline" className={cn(l.status === 'Lost' && 'border-red-500 text-red-500', l.status === 'Found' && 'border-amber-500 text-amber-500', l.status === 'Returned' && 'border-emerald-500 text-emerald-500')}>{l.status}</Badge>
+              <Badge variant="outline" className={cn(l.status === 'Lost' && 'border-red-500 text-red-700 dark:text-red-400', l.status === 'Found' && 'border-amber-500 text-amber-700 dark:text-amber-400', l.status === 'Returned' && 'border-emerald-500 text-emerald-700 dark:text-emerald-400')}>{l.status}</Badge>
             </div>
             {l.location && <div className="text-xs text-muted-foreground mt-0.5">Last seen: {l.location}</div>}
             {l.holderName && <div className="text-xs text-muted-foreground">Now with {l.holderName}</div>}
@@ -772,7 +772,7 @@ function LostProperty({ media, act }: { media: Media; act: ActFn }) {
                 <option value="">Nobody yet</option>
                 {media.members.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>)}
               </select>
-              {media.canDelete && <button onClick={() => act(() => saveLostItem({ showId: media.showId, id: l.id, remove: true }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {media.canDelete && <button onClick={() => act(() => saveLostItem({ showId: media.showId, id: l.id, remove: true }))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
           </div>
         ))}
@@ -819,7 +819,7 @@ function Audience({ media, act }: { media: Media; act: ActFn }) {
             <span className="flex items-center gap-3">
               <span className="font-mono">{a.count}{a.capacity ? `/${a.capacity}` : ''}</span>
               {a.capacity > 0 && <span className="text-xs text-muted-foreground">{Math.round((a.count / a.capacity) * 100)}%</span>}
-              <button onClick={() => act(() => saveAudienceCount({ showId: media.showId, subEventId: a.subEvent, remove: true }))} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              <button onClick={() => act(() => saveAudienceCount({ showId: media.showId, subEventId: a.subEvent, remove: true }))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
             </span>
           </div>
         ))}

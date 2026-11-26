@@ -61,7 +61,7 @@ export default function Contacts() {
 
       {data && !data.on && (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-          <BookUser className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <BookUser className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
           <p className="text-muted-foreground">
             You are not on the sheet. Turn on <span className="font-medium text-foreground">Contact sheet</span> in{' '}
             <Link to="/profile" className="underline hover:text-foreground">

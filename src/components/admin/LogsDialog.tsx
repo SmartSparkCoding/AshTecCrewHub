@@ -22,7 +22,7 @@ function Duration({ r }: { r: LogRow }) {
       : <span>{r.viewSeconds} s</span>;
   }
   return r.latencyMs
-    ? <span className={r.latencyMs > 2000 ? 'text-amber-400' : ''}>{r.latencyMs} ms</span>
+    ? <span className={r.latencyMs > 2000 ? 'text-amber-700 dark:text-amber-400' : ''}>{r.latencyMs} ms</span>
     : <span className="text-muted-foreground">·</span>;
 }
 
@@ -93,8 +93,8 @@ export default function LogsDialog({ open, onClose }: { open: boolean; onClose: 
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-2xl border">
+          <table className="w-full min-w-[32rem] text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-3 py-2.5">When</th>
@@ -123,7 +123,7 @@ export default function LogsDialog({ open, onClose }: { open: boolean; onClose: 
                     {r.method === 'view'
                       ? <Badge variant="outline" className="border-primary/30 text-primary">view</Badge>
                       : r.status
-                        ? <Badge variant="outline" className={r.status >= 400 ? 'border-red-500/40 text-red-400' : 'border-emerald-500/40 text-emerald-400'}>{r.status}</Badge>
+                        ? <Badge variant="outline" className={r.status >= 400 ? 'border-red-500/40 text-red-700 dark:text-red-400' : 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400'}>{r.status}</Badge>
                         : <Badge variant="outline">ok</Badge>}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-right text-xs"><Duration r={r} /></td>
@@ -203,10 +203,10 @@ function DeployBox({ onDeployed }: { onDeployed: () => void }) {
           {result.steps.map((s) => (
             <li key={s.cmd} className="flex items-center gap-2">
               {s.code === 0
-                ? <CircleCheck className="h-3.5 w-3.5 text-emerald-400" />
-                : <span className="h-3.5 w-3.5 text-center text-red-400">×</span>}
+                ? <CircleCheck className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                : <span className="h-3.5 w-3.5 text-center text-red-700 dark:text-red-400">×</span>}
               <span className="font-mono">{s.cmd}</span>
-              {s.code !== 0 && <span className="text-red-400">exit {s.code}</span>}
+              {s.code !== 0 && <span className="text-red-700 dark:text-red-400">exit {s.code}</span>}
             </li>
           ))}
           <li className="pt-1 text-muted-foreground">{result.ok ? result.restart : result.note}</li>

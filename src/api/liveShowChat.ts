@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { requireMember, findMemberByEmail } from '../lib/server';
 import { openLiveShow, mapMessage, loadLiveShowMessages } from '../lib/liveShow';
@@ -39,22 +39,22 @@ export default createEndpoint({
     const liveShow = input.liveShowId
       ? await zite.liveShows.findOne({ id: input.liveShowId })
       : await openLiveShow();
-    if (!liveShow) throw new Error('No live show is open.');
+    if (!liveShow) throw new ZiteError('No live show is open.', 'BAD_REQUEST');
 
     let authorId: string;
     let authorName: string;
     if (context.user) {
       const me = await requireMember(context.user.email);
-      if (!me.isAdmin) throw new Error('Only admins can post to the live show chat.');
+      if (!me.isAdmin) throw new ZiteError('Only admins can post to the live show chat.', 'FORBIDDEN');
       authorId = me.id;
       authorName = `${me.firstName ?? ''} ${me.lastName ?? ''}`.trim() || 'Admin';
     } else {
       const email = await credentialEmail(input.email, input.memberId);
       const secret = input.secret ?? '';
-      if (!email || !secret) throw new Error('Sign in, or give an admin email and cat-login secret.');
+      if (!email || !secret) throw new ZiteError('Sign in, or give an admin email and cat-login secret.', 'UNAUTHORIZED');
       const member = await findMemberByEmail(email);
-      if (!member?.isAdmin) throw new Error('Only admins can post to the live show chat.');
-      if (!(await verifyAdminSecret(email, secret))) throw new Error('Those admin details are not right.');
+      if (!member?.isAdmin) throw new ZiteError('Only admins can post to the live show chat.', 'FORBIDDEN');
+      if (!(await verifyAdminSecret(email, secret))) throw new ZiteError('Those admin details are not right.', 'FORBIDDEN');
       authorId = member.id;
       authorName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || 'Admin';
     }
@@ -63,7 +63,7 @@ export default createEndpoint({
     if (screen) authorName = screen;
 
     const body = input.body.trim().slice(0, CHAT_MAX);
-    if (!body) throw new Error('Write something first.');
+    if (!body) throw new ZiteError('Write something first.', 'BAD_REQUEST');
     const message = await zite.liveShowMessages.create({
       record: { liveShowId: liveShow.id, author: authorId, authorName, body, kind: 'chat' },
     });

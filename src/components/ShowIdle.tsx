@@ -38,7 +38,7 @@ export default function ShowIdle() {
       <div aria-hidden className="pointer-events-none absolute inset-3 rounded-[26px] border border-[#f3ece1]/10 md:inset-5 md:rounded-[34px]" />
 
       <div className="relative flex flex-col items-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.5em] text-[#7e7a86]">AshTec crew</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.5em] text-[#a7a1ad]">AshTec crew</p>
         <div className="mt-3 h-px w-16 bg-[#d9ab6c]/50" />
         <motion.img
           src="/cat.png"
@@ -64,7 +64,7 @@ export default function ShowIdle() {
             </motion.p>
           </AnimatePresence>
         </div>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.35em] text-[#4f4b56]">This screen wakes up when the show starts</p>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.35em] text-[#8a8493]">This screen wakes up when the show starts</p>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { findMemberByEmail } from '../lib/server';
 import { verifyAdminSecret, credentialEmail } from '../../server/catLogin.js';
 import {
@@ -40,12 +40,12 @@ export default createEndpoint({
   outputSchema: z.any(),
   execute: async ({ input }) => {
     const liveShow = await currentLiveShow();
-    if (!liveShow) throw new Error('No live show has been set up yet.');
+    if (!liveShow) throw new ZiteError('No live show has been set up yet.', 'BAD_REQUEST');
     const email = await credentialEmail(input.email, input.memberId);
-    if (!email) throw new Error('Pick which admin is setting up this screen.');
+    if (!email) throw new ZiteError('Pick which admin is setting up this screen.', 'BAD_REQUEST');
     const member = await findMemberByEmail(email);
     if (!member?.isAdmin || !(await verifyAdminSecret(email, input.pin))) {
-      throw new Error('Those admin details are not right.');
+      throw new ZiteError('Those admin details are not right.', 'FORBIDDEN');
     }
     const device = await enableLiveShowDevice(liveShow, {
       deviceKey: input.deviceKey,

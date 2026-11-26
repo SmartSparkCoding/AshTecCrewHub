@@ -31,11 +31,11 @@ const clock = (iso: string | null) =>
 
 /** Icon + colour per timeline action. */
 function actionStyle(action: string) {
-  if (action === 'Sign In') return { Icon: LogIn, tone: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' };
-  if (action === 'Sign Out') return { Icon: LogOut, tone: 'text-amber-400 border-amber-500/30 bg-amber-500/10' };
+  if (action === 'Sign In') return { Icon: LogIn, tone: 'text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' };
+  if (action === 'Sign Out') return { Icon: LogOut, tone: 'text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10' };
   if (action === 'Session Opened') return { Icon: DoorOpen, tone: 'text-primary border-primary/30 bg-primary/10' };
   if (action === 'Session Closed') return { Icon: DoorClosed, tone: 'text-muted-foreground border-border bg-muted' };
-  return { Icon: XCircle, tone: 'text-red-400 border-red-500/30 bg-red-500/10' };
+  return { Icon: XCircle, tone: 'text-red-700 dark:text-red-400 border-red-500/30 bg-red-500/10' };
 }
 
 /**
@@ -89,7 +89,7 @@ export default function PresenceHistoryDialog({ sessionId, memberId, onClose }: 
                 <Badge variant="outline">Opened by {detail.session.startedByName || 'unknown'}</Badge>
                 {detail.session.endedAt
                   ? <Badge variant="outline">Closed by {detail.session.endedByName || 'unknown'}</Badge>
-                  : <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">Open</Badge>}
+                  : <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Open</Badge>}
                 <Badge variant="outline">{detail.roster.length} on the roster</Badge>
               </div>
             )}

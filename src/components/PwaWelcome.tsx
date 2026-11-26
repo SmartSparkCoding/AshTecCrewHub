@@ -151,7 +151,7 @@ export default function PwaWelcome() {
 
         <div className="rounded-xl border bg-muted/30 p-3">
           {notif === 'granted' ? (
-            <p className="flex items-center gap-2 text-sm text-emerald-400">
+            <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
               <Check className="h-4 w-4" /> Notifications are on.
             </p>
           ) : (

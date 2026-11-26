@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
 import { MASCOT } from '../lib/mascot';
 import { useAppSettings } from '../lib/appSettings';
@@ -18,6 +18,7 @@ import { Cat, Coins, MessageCircle, Sparkles } from 'lucide-react';
  * something.
  */
 export default function Mascot() {
+  const reduceMotion = useReducedMotion();
   const [hidden, setHidden] = useCatHidden();
   const { catName } = useAppSettings();
   const [line, setLine] = useState(MASCOT.line());
@@ -61,8 +62,8 @@ export default function Mascot() {
         <div className="relative">
           <motion.div
             className="mx-auto w-fit drop-shadow-xl"
-            animate={{ y: [0, -6, 0], rotate: [-2, 2, -2] }}
-            transition={{ repeat: Infinity, duration: 4.5, ease: 'easeInOut' }}
+            animate={reduceMotion ? undefined : { y: [0, -6, 0], rotate: [-2, 2, -2] }}
+            transition={{ repeat: reduceMotion ? 0 : Infinity, duration: 4.5, ease: 'easeInOut' }}
           >
             <CatWithCostume equipped={equipped} box={128} alt={catName} />
           </motion.div>

@@ -220,7 +220,7 @@ ${lines ? `<ul>${lines}</ul>` : '<p style="color:#777">No rehearsals or performa
                       {showId === 'all' && e.showIds.length ? ` · ${e.showIds.map(showName).join(', ')}` : ''}
                     </p>
                   </div>
-                  <Badge variant="outline" className={e.type === 'Performance' ? 'border-pink-500/40 text-pink-400' : 'border-sky-500/40 text-sky-400'}>{e.type}</Badge>
+                  <Badge variant="outline" className={e.type === 'Performance' ? 'border-pink-500/40 text-pink-400' : 'border-sky-500/40 text-sky-700 dark:text-sky-400'}>{e.type}</Badge>
                 </li>
               ))}
             </ul>

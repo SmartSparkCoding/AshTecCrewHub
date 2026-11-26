@@ -98,7 +98,7 @@ export default function Productions() {
                       <Ticket className="h-4 w-4 text-pink-400" /> {perfCount(list)} performance{perfCount(list) === 1 ? '' : 's'}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5">
-                      <Clock className="h-4 w-4 text-sky-400" /> {rehearsalCount(list)} rehearsal{rehearsalCount(list) === 1 ? '' : 's'}
+                      <Clock className="h-4 w-4 text-sky-700 dark:text-sky-400" /> {rehearsalCount(list)} rehearsal{rehearsalCount(list) === 1 ? '' : 's'}
                     </span>
                   </div>
                 </div>
