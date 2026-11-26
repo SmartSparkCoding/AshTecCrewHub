@@ -1151,4 +1151,53 @@ CREATE TABLE IF NOT EXISTS "AudioDeckControl" (
 );
 CREATE INDEX IF NOT EXISTS "AudioDeckControl_status_idx" ON "AudioDeckControl" ("status");
 
+-- Tickets 10017d4f ("Cat avatars") and d46defd1 ("cat costumes"): the cat shop.
+-- Coins are earned, not stored - they are counted from the helpful things a
+-- member has already done (checklist items ticked, show sign-offs, cue calls
+-- answered), so this row only records what the member spent them on and what
+-- the cat is currently wearing. One row per member.
+CREATE TABLE IF NOT EXISTS "CatWallets" (
+  "id"        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "member"    uuid NOT NULL,
+  "owned"     text[] NOT NULL DEFAULT '{}',
+  "equipped"  text NOT NULL DEFAULT '',
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  "updatedAt" timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "CatWallets_member_idx" ON "CatWallets" ("member");
+
+-- Ticket 7e928a80 ("A live stream"): stage left watching stage right.
+-- One row per screen or phone that has opted in to video. `sharing` is true while
+-- that device is offering a camera; `watching` is the deviceKey this device has
+-- been pointed at by an admin. Every change of either is made by an unlocked
+-- admin (admin account plus cat PIN), which is the security the ticket asked for.
+CREATE TABLE IF NOT EXISTS "StageVideo" (
+  "id"         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "liveShow"   uuid NOT NULL,
+  "deviceKey"  text NOT NULL,
+  "name"       text NOT NULL DEFAULT '',
+  "role"       text NOT NULL DEFAULT 'screen',
+  "sharing"    boolean NOT NULL DEFAULT false,
+  "watching"   text NOT NULL DEFAULT '',
+  "lastSeenAt" timestamptz NOT NULL DEFAULT now(),
+  "createdAt"  timestamptz NOT NULL DEFAULT now(),
+  "updatedAt"  timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "StageVideo_device_idx" ON "StageVideo" ("deviceKey");
+
+-- The offer/answer/ICE handshake, carried as rows because the stage screens have
+-- no websocket. Rows are claimed once by the device they are addressed to and
+-- anything older than a couple of minutes is swept, so this stays small.
+CREATE TABLE IF NOT EXISTS "StageSignals" (
+  "id"        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "liveShow"  uuid NOT NULL,
+  "fromKey"   text NOT NULL,
+  "toKey"     text NOT NULL,
+  "kind"      text NOT NULL,
+  "payload"   text NOT NULL DEFAULT '',
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  "updatedAt" timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS "StageSignals_to_idx" ON "StageSignals" ("toKey", "createdAt");
+
 COMMIT;

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { requireMember } from '../lib/server';
-import { YEARS, ROLES } from '../lib/constants';
+import { YEARS } from '../lib/constants';
 import { parsePrivacy, onlyKnownSkills } from '../lib/settings';
 import { readAppSettings } from './getSettings';
 import { isAvatarUrl, AVATAR_URL_MESSAGE } from '../lib/avatarUrl';
@@ -74,12 +74,31 @@ export default createEndpoint({
       if (input.year === 'Staff') throw new Error('Staff is set by a crew admin - ask one to change it.');
       record.year = input.year;
     }
+    /**
+     * Ticket fa9af47e: the pickers on the profile page draw from the list an
+     * admin curates in Settings, but this check used the built-in ROLES list.
+     * The moment an admin added a role of their own (or renamed one), a member
+     * who picked it could never save their profile - the save came back as a
+     * 500 "Pick a role from the list." with the role right there in the box.
+     * Ask the same list the form asks.
+     *
+     * A value that is already on the member's row is always allowed through as
+     * well: an admin removing a role from the list must not lock everybody who
+     * had it out of saving an unrelated field like their picture.
+     */
+    const roleOptions = (await readAppSettings()).lists.roles;
+    const knownRole = (value: string, stored: string | null | undefined) =>
+      !value || roleOptions.includes(value) || value === (stored ?? '');
     if (input.preferredRole1 !== undefined) {
-      if (input.preferredRole1 && !ROLES.includes(input.preferredRole1)) throw new Error('Pick a role from the list.');
+      if (!knownRole(input.preferredRole1, me.preferredRole1)) {
+        throw new ZiteError({ code: 'BAD_REQUEST', message: 'Pick a role from the list.' });
+      }
       record.preferredRole1 = input.preferredRole1 || null;
     }
     if (input.preferredRole2 !== undefined) {
-      if (input.preferredRole2 && !ROLES.includes(input.preferredRole2)) throw new Error('Pick a role from the list.');
+      if (!knownRole(input.preferredRole2, me.preferredRole2)) {
+        throw new ZiteError({ code: 'BAD_REQUEST', message: 'Pick a role from the list.' });
+      }
       record.preferredRole2 = input.preferredRole2 || null;
     }
     const p1 = (input.preferredRole1 ?? me.preferredRole1 ?? '') as string;

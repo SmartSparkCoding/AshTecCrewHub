@@ -8,6 +8,8 @@ import { useCatHidden } from '../lib/uiPrefs';
 import { playSfx } from '../lib/sfx';
 import { hitsCat, nextSnack, pageBox, type Snack } from '../lib/catSnack';
 import { SnackIcon } from './CatFood';
+import { CatCostume } from './CatCostume';
+import { useCatWardrobe } from '../lib/catWardrobe';
 
 /**
  * The crew cat, out of the feedback forms and onto every page (Batch 8).
@@ -21,6 +23,12 @@ import { SnackIcon } from './CatFood';
  */
 export default function CatCompanion() {
   const [hidden, setCatHidden] = useCatHidden();
+  /**
+   * Tickets 10017d4f / d46defd1: whatever the cat has bought from the shop is
+   * worn here too, so a hat bought on the cat page is on the cat in the corner
+   * of the app without a reload.
+   */
+  const { equipped } = useCatWardrobe();
   const { catName } = useAppSettings();
   const [line, setLine] = useState<string | null>(null);
   /**
@@ -219,24 +227,27 @@ export default function CatCompanion() {
             />
           </span>
         ) : (
-          <motion.img
-            src={MASCOT.image}
-            alt=""
-            width={56}
-            height={58}
-            draggable={false}
-            animate={
-              eating
-                ? { scale: [1, 1.12, 0.96, 1.1, 1], rotate: [0, -4, 4, -2, 0] }
-                : { y: [0, -4, 0] }
-            }
-            transition={
-              eating
-                ? { duration: 0.9, ease: 'easeInOut' }
-                : { repeat: Infinity, duration: 3.4, ease: 'easeInOut' }
-            }
-            className="h-14 w-14 drop-shadow-lg transition-transform hover:scale-105"
-          />
+          <span className="relative block h-14 w-14">
+            <motion.img
+              src={MASCOT.image}
+              alt=""
+              width={56}
+              height={58}
+              draggable={false}
+              animate={
+                eating
+                  ? { scale: [1, 1.12, 0.96, 1.1, 1], rotate: [0, -4, 4, -2, 0] }
+                  : { y: [0, -4, 0] }
+              }
+              transition={
+                eating
+                  ? { duration: 0.9, ease: 'easeInOut' }
+                  : { repeat: Infinity, duration: 3.4, ease: 'easeInOut' }
+              }
+              className="h-14 w-14 drop-shadow-lg transition-transform hover:scale-105"
+            />
+            <CatCostume equipped={equipped} box={56} />
+          </span>
         )}
       </button>
     </div>

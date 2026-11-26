@@ -318,6 +318,13 @@ export type AdminUpdateTicketInputType = NonNullable<_AdminUpdateTicketCfg['inpu
 export type AdminUpdateTicketOutputType = Awaited<ReturnType<_AdminUpdateTicketCfg['execute']>>;
 export const adminUpdateTicket = createCaller<AdminUpdateTicketInputType, AdminUpdateTicketOutputType>('adminUpdateTicket');
 
+import type { default as _BuyCatCostumeEp } from '../api/buyCatCostume';
+
+type _BuyCatCostumeCfg = typeof _BuyCatCostumeEp;
+export type BuyCatCostumeInputType = NonNullable<_BuyCatCostumeCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_BuyCatCostumeCfg['execute']>[0]['input'];
+export type BuyCatCostumeOutputType = Awaited<ReturnType<_BuyCatCostumeCfg['execute']>>;
+export const buyCatCostume = createCaller<BuyCatCostumeInputType, BuyCatCostumeOutputType>('buyCatCostume');
+
 import type { default as _CheckEmailEp } from '../api/checkEmail';
 
 type _CheckEmailCfg = typeof _CheckEmailEp;
@@ -381,6 +388,13 @@ export type EnableLiveShowDeviceInputType = NonNullable<_EnableLiveShowDeviceCfg
 export type EnableLiveShowDeviceOutputType = Awaited<ReturnType<_EnableLiveShowDeviceCfg['execute']>>;
 export const enableLiveShowDevice = createCaller<EnableLiveShowDeviceInputType, EnableLiveShowDeviceOutputType>('enableLiveShowDevice');
 
+import type { default as _EquipCatCostumeEp } from '../api/equipCatCostume';
+
+type _EquipCatCostumeCfg = typeof _EquipCatCostumeEp;
+export type EquipCatCostumeInputType = NonNullable<_EquipCatCostumeCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_EquipCatCostumeCfg['execute']>[0]['input'];
+export type EquipCatCostumeOutputType = Awaited<ReturnType<_EquipCatCostumeCfg['execute']>>;
+export const equipCatCostume = createCaller<EquipCatCostumeInputType, EquipCatCostumeOutputType>('equipCatCostume');
+
 import type { default as _ExportMyDataEp } from '../api/exportMyData';
 
 type _ExportMyDataCfg = typeof _ExportMyDataEp;
@@ -436,6 +450,13 @@ type _GetCatLoginAdminsCfg = typeof _GetCatLoginAdminsEp;
 export type GetCatLoginAdminsInputType = NonNullable<_GetCatLoginAdminsCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetCatLoginAdminsCfg['execute']>[0]['input'];
 export type GetCatLoginAdminsOutputType = Awaited<ReturnType<_GetCatLoginAdminsCfg['execute']>>;
 export const getCatLoginAdmins = createCaller<GetCatLoginAdminsInputType, GetCatLoginAdminsOutputType>('getCatLoginAdmins');
+
+import type { default as _GetCatShopEp } from '../api/getCatShop';
+
+type _GetCatShopCfg = typeof _GetCatShopEp;
+export type GetCatShopInputType = NonNullable<_GetCatShopCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_GetCatShopCfg['execute']>[0]['input'];
+export type GetCatShopOutputType = Awaited<ReturnType<_GetCatShopCfg['execute']>>;
+export const getCatShop = createCaller<GetCatShopInputType, GetCatShopOutputType>('getCatShop');
 
 import type { default as _GetContactSheetEp } from '../api/getContactSheet';
 
@@ -962,6 +983,27 @@ export type SignOffShowInputType = NonNullable<_SignOffShowCfg['inputSchema']> e
 export type SignOffShowOutputType = Awaited<ReturnType<_SignOffShowCfg['execute']>>;
 export const signOffShow = createCaller<SignOffShowInputType, SignOffShowOutputType>('signOffShow');
 
+import type { default as _StageVideoShareEp } from '../api/stageVideoShare';
+
+type _StageVideoShareCfg = typeof _StageVideoShareEp;
+export type StageVideoShareInputType = NonNullable<_StageVideoShareCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_StageVideoShareCfg['execute']>[0]['input'];
+export type StageVideoShareOutputType = Awaited<ReturnType<_StageVideoShareCfg['execute']>>;
+export const stageVideoShare = createCaller<StageVideoShareInputType, StageVideoShareOutputType>('stageVideoShare');
+
+import type { default as _StageVideoSignalEp } from '../api/stageVideoSignal';
+
+type _StageVideoSignalCfg = typeof _StageVideoSignalEp;
+export type StageVideoSignalInputType = NonNullable<_StageVideoSignalCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_StageVideoSignalCfg['execute']>[0]['input'];
+export type StageVideoSignalOutputType = Awaited<ReturnType<_StageVideoSignalCfg['execute']>>;
+export const stageVideoSignal = createCaller<StageVideoSignalInputType, StageVideoSignalOutputType>('stageVideoSignal');
+
+import type { default as _StageVideoStateEp } from '../api/stageVideoState';
+
+type _StageVideoStateCfg = typeof _StageVideoStateEp;
+export type StageVideoStateInputType = NonNullable<_StageVideoStateCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_StageVideoStateCfg['execute']>[0]['input'];
+export type StageVideoStateOutputType = Awaited<ReturnType<_StageVideoStateCfg['execute']>>;
+export const stageVideoState = createCaller<StageVideoStateInputType, StageVideoStateOutputType>('stageVideoState');
+
 import type { default as _SubmitSupportEp } from '../api/submitSupport';
 
 type _SubmitSupportCfg = typeof _SubmitSupportEp;
@@ -1054,6 +1096,7 @@ export const api = {
   adminSetMaintainer,
   adminSetSupportSettings,
   adminUpdateTicket,
+  buyCatCostume,
   checkEmail,
   claimRotaSlot,
   customThemes,
@@ -1063,6 +1106,7 @@ export const api = {
   deckStatus,
   deletePushSubscription,
   enableLiveShowDevice,
+  equipCatCostume,
   exportMyData,
   getAnalytics,
   getAnnouncements,
@@ -1071,6 +1115,7 @@ export const api = {
   getCalendarFeed,
   getCallSheet,
   getCatLoginAdmins,
+  getCatShop,
   getContactSheet,
   getCountdown,
   getDocuments,
@@ -1146,6 +1191,9 @@ export const api = {
   setShowResponse,
   setTechLock,
   signOffShow,
+  stageVideoShare,
+  stageVideoSignal,
+  stageVideoState,
   submitSupport,
   supportDigest,
   supportEscalate,

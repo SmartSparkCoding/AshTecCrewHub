@@ -4,16 +4,18 @@ import { useAuth } from '#auth';
 import {
   getLiveShowState, getMe, getLiveShowAdmins, enableLiveShowDevice, liveShowUnlockAdmin,
   adminLiveShowControl, adminLiveShowDevice, liveShowChat, liveShowClearChat, liveShowAnnouncement, liveShowMovement,
+  stageVideoShare,
 } from '#api';
 import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import {
   KeyRound, Loader2, Play, Pause, RotateCcw, ChevronLeft, ChevronRight,
   ScrollText, Tv, Settings2, Users, Clapperboard, Lock, MessageSquare, Megaphone, ShieldAlert,
-  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package, Mic,
+  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package, Mic, Video, VideoOff,
 } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 import ShowIdle from '../../components/ShowIdle';
+import { useStageVideo } from '../../lib/stageVideoClient';
 
 type Cred = { memberId: string; secret: string; name: string };
 
@@ -82,6 +84,14 @@ const fmt = (ms: number) => {
   const ss = s % 60;
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}`;
 };
+
+/**
+ * Ticket 175c2d3e: the time of day, in the venue's own format. The show clock
+ * counts up from go; this is the clock on the wall, which is what a call time,
+ * a interval end or "we are behind" is measured against.
+ */
+const wallClock = (now: number) =>
+  new Date(now).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 const elapsedOf = (b: Board, now: number) => {
   const base = Number(b.timerElapsedMs ?? 0);
@@ -264,11 +274,22 @@ function UnlockModal({ onClose, onUnlocked }: { onClose: () => void; onUnlocked:
   };
   const field = 'w-full rounded-lg border border-[#f3ece1]/12 bg-[#0b0a0e] px-3 py-2.5 text-sm text-[#f3ece1] outline-none transition-colors focus:border-[#d9ab6c]/60';
   return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm space-y-4 rounded-2xl border border-[#f3ece1]/12 bg-[#141017] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    /**
+     * Ticket 29ad0eea: on a phone the sheet was centred in a fixed full-screen
+     * box, so with the keyboard up it sat half under the address bar and the
+     * only way out ("Cancel") was off the bottom of the screen. It is now a
+     * bottom sheet on small screens, capped at the visible height with its own
+     * scroll, and it always has an X in the corner as well as Cancel.
+     */
+    <div className="fixed inset-0 z-[75] flex items-end justify-center overflow-y-auto bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div className="max-h-[100dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-t-2xl border border-[#f3ece1]/12 bg-[#141017] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:pb-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2.5">
           <KeyRound className="h-4 w-4 text-[#d9ab6c]" />
           <p className="text-[10px] uppercase tracking-[0.4em] text-[#d9ab6c]">Controls</p>
+          <button type="button" onClick={onClose} aria-label="Close the unlock sheet"
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#9a94a1] outline-none transition-colors hover:bg-[#f3ece1]/10 hover:text-[#f3ece1] focus-visible:ring-2 focus-visible:ring-[#d9ab6c]">
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <h2 className="text-xl font-black text-[#f8f3ea]">Unlock the controls</h2>
         <p className="text-xs leading-relaxed text-[#9a94a1]">Pick an admin and enter their cat-login PIN. A second admin can unlock too.</p>
@@ -368,6 +389,13 @@ function BoardView({
           </p>
 
           <div className="relative mt-2 flex items-center justify-center gap-3 lg:absolute lg:right-8 lg:top-1/2 lg:mt-0 lg:block lg:-translate-y-1/2 lg:pr-2 lg:text-right">
+            {/* Ticket 175c2d3e: from the wings you need the actual time as well
+                as the elapsed show clock - "we are twenty minutes behind" is a
+                question about the wall clock, not about the timer. */}
+            <p className="text-[10px] uppercase tracking-[0.4em] text-[#7e7a86]">
+              <span className="hidden sm:inline">Time · </span>
+              <span className="font-mono tabular-nums text-[#c9c3cf]">{wallClock(now)}</span>
+            </p>
             <p className="text-[10px] uppercase tracking-[0.4em] text-[#7e7a86]">Show clock</p>
             <p key={board.timerMode} className={cn('font-mono text-4xl leading-none tabular-nums md:text-6xl', board.timerMode === 'running' ? 'text-[#f8f3ea]' : 'text-[#9b96a3]')}>{fmt(elapsedOf(board, now))}</p>
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#5d5964] lg:mt-1">{board.timerMode === 'running' ? 'Running' : 'Stopped'}</p>
@@ -571,13 +599,16 @@ function BoardView({
 // ---------------------------------------------------------------- control panel
 
 function ControlPanel({
-  board, scenes, messages, device, cred, onAddAdmin, onClose, onRefresh,
+  board, scenes, messages, device, cred, video, mine, onWatch, onAddAdmin, onClose, onRefresh,
 }: {
   board: Board;
   scenes: Scene[];
   messages: ChatMessage[];
   device: DeviceInfo;
   cred: Cred;
+  video: { peers: { deviceKey: string; name: string; sharing: boolean }[]; watching: string };
+  mine: string;
+  onWatch: (target: string) => void;
   onAddAdmin: () => void;
   onClose: () => void;
   onRefresh: () => void;
@@ -767,6 +798,38 @@ function ControlPanel({
           </div>
           <p className="text-[11px] text-[#525b6c]">Push a bump/key warning to the selected admins for THIS screen.</p>
         </div>
+
+        {/* Ticket 7e928a80. A camera shows up here within a second of an admin
+            allowing it to film, and only cameras that are actually sharing, so
+            nothing points at a phone that is asleep in a pocket. */}
+        <div className="rounded-xl border border-[#2a3040] bg-[#0f1219] p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Video className="h-4 w-4 text-[#d9ab6c]" />
+            <span className="text-xs uppercase tracking-widest text-[#9aa3b2]">Stage video</span>
+            {video.watching && (
+              <Button size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs" onClick={() => onWatch('')}>
+                Stop watching
+              </Button>
+            )}
+          </div>
+          {video.peers.filter((p) => p.sharing && p.deviceKey !== mine).length === 0 ? (
+            <p className="text-[11px] text-[#525b6c]">
+              No screen is filming. Open /show-dash-video on a phone, pick an admin and enter their cat PIN to start one.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {video.peers.filter((p) => p.sharing && p.deviceKey !== mine).map((p) => {
+                const on = video.watching === p.deviceKey;
+                return (
+                  <button type="button" key={p.deviceKey} onClick={() => onWatch(on ? '' : p.deviceKey)}
+                    className={cn('rounded-full border px-2.5 py-1 text-[11px] transition', on ? 'border-[#d9ab6c] bg-[#d9ab6c]/15 font-medium text-[#e7cba1]' : 'border-[#2a3040] text-[#9aa3b2] hover:border-[#d9ab6c]/60')}>
+                    {p.name || 'Stage camera'}{on ? ' · watching' : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -808,7 +871,69 @@ export default function LiveShowDash() {
   const [unlock, setUnlock] = useState(false);
   const [move, setMove] = useState<{ message: string } | null>(null);
 
+
+  /**
+   * Ticket 175c2d3e, the "title" hint: a screen is often left on a tab, and the
+   * tab is the only bit of it you can see from the desk. Keep the time in it.
+   */
+  useEffect(() => {
+    const tick = () => {
+      const was = document.title;
+      document.title = `${wallClock(Date.now())} · ${board?.name ?? 'Show'}`;
+      return was;
+    };
+    const id = window.setInterval(tick, 20000);
+    tick();
+    return () => { window.clearInterval(id); document.title = 'AshTec Crew Hub'; };
+  }, [board?.name]);
+
   const cred = creds[0] ?? null;
+  /**
+   * Ticket 7e928a80. Every screen keeps one ear open for the stage cameras, so a
+   * screen that has been told to watch one starts as soon as it can see it -
+   * including after a reload, because the server remembers the choice.
+   */
+  const video = useStageVideo({
+    deviceKey: device ? deviceKey() : '',
+    name: device?.name ?? '',
+    enabled: !!device && !!board,
+    liveShowId: board?.id,
+  });
+  const remoteVideo = useRef<HTMLVideoElement | null>(null);
+  const [frames, setFrames] = useState(false);
+
+  useEffect(() => {
+    const el = remoteVideo.current;
+    if (!el) return;
+    el.srcObject = video.remote;
+    setFrames(false);
+    if (!video.remote) return;
+    /**
+     * Chrome will not autoplay a stream with sound until the page has been
+     * clicked, and a blocked autoplay is a black rectangle on a stage screen.
+     * Try it with the sound, then fall back to silent so the picture always comes.
+     */
+    void el.play().catch(() => {
+      el.muted = true;
+      void el.play().catch(() => undefined);
+    });
+  }, [video.remote]);
+
+  /** Point this screen at another one, or at nothing. Needs the admin PIN again. */
+  const watchScreen = useCallback(async (target: string) => {
+    const first = creds[0];
+    if (!device || !first) return;
+    try {
+      await stageVideoShare({
+        deviceKey: deviceKey(), name: device.name, memberId: first.memberId, pin: first.secret, watching: target,
+      });
+      video.reset();
+      setFrames(false);
+      toast.success(target ? 'Watching that screen' : 'Stopped watching');
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }, [device, creds, video]);
 
   const apply = useCallback((r: StatePayload) => {
     // No show running (or none set up at all): show only the cat idle screen -
@@ -1037,6 +1162,34 @@ export default function LiveShowDash() {
         <div className="border-t border-[#d9ab6c]/25 bg-[#0b0a0e]/90 px-4 py-1.5 text-center text-[10px] uppercase tracking-[0.4em] text-[#d9ab6c]">Show not started yet</div>
       )}
 
+      {video.watching && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-black">
+          <video
+            ref={remoteVideo}
+            autoPlay
+            playsInline
+            onLoadedData={() => setFrames(true)}
+            className="min-h-0 flex-1 object-contain"
+          />
+          <div className="flex items-center gap-3 bg-[#07080a] px-4 py-3">
+            <Video className="h-4 w-4 text-[#d9ab6c]" />
+            <span className="text-sm text-cream">
+              {video.peers.find((p) => p.deviceKey === video.watching)?.name || 'Stage camera'}
+            </span>
+            {!frames && (
+              <span className="text-xs text-[#9aa3b2]">
+                {video.peers.some((p) => p.deviceKey === video.watching && p.sharing)
+                  ? 'connecting…'
+                  : 'that camera is not on'}
+              </span>
+            )}
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => void watchScreen('')}>
+              <VideoOff className="h-4 w-4 mr-1.5" />Stop watching
+            </Button>
+          </div>
+        </div>
+      )}
+
       {visibleAnnouncements.length > 0 && (
         <AnnouncementOverlay items={visibleAnnouncements} onDismiss={(id) => setDismissed((d) => [...d, id])} />
       )}
@@ -1049,6 +1202,7 @@ export default function LiveShowDash() {
       {panel && board && device && cred && (
         <ControlPanel
           board={board} scenes={scenes} messages={messages} device={device} cred={cred}
+          video={video} mine={deviceKey()} onWatch={(t) => void watchScreen(t)}
           onAddAdmin={() => { setPanel(false); setUnlock(true); }}
           onClose={closePanel}
           onRefresh={() => { void refresh(); }}
