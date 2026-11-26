@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CameraOff, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
-import { getLiveShowAdmins, stageVideoShare } from '#api';
+import { getLiveShowAdmins, stageFramePut, stageVideoShare } from '#api';
 import { useStageVideo } from '../../lib/stageVideoClient';
 
 /**
@@ -49,6 +49,45 @@ export default function ShowDashVideo() {
   useEffect(() => {
     localStorage.setItem(NAME_STORE, name);
   }, [name]);
+
+  // The relay half of the stream. A school wifi with client isolation never lets
+  // the screens reach this phone peer to peer, so while filming it also posts one
+  // small JPEG at a time over the same HTTPS connection the app already uses.
+  // A screen shows real video when it can and these frames when it cannot.
+  useEffect(() => {
+    if (!live) return;
+    const stream = streamRef.current;
+    if (!stream) return;
+    const el = document.createElement('video');
+    el.srcObject = stream;
+    el.muted = true;
+    el.playsInline = true;
+    const canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 270;
+    const ctx = canvas.getContext('2d');
+    let stopped = false;
+    let timer = 0;
+    const tick = () => {
+      if (stopped) return;
+      if (ctx && el.readyState >= 2) {
+        ctx.drawImage(el, 0, 0, canvas.width, canvas.height);
+        void stageFramePut({ deviceKey: key, frame: canvas.toDataURL('image/jpeg', 0.5) }).catch(() => undefined);
+      }
+      if (!stopped) timer = window.setTimeout(tick, 400);
+    };
+    void el
+      .play()
+      .then(() => {
+        timer = window.setTimeout(tick, 300);
+      })
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      el.srcObject = null;
+    };
+  }, [live, key]);
 
   // The preview element is a different node once the screen goes dark, so the
   // stream is attached again here rather than only at the moment the camera opens.

@@ -4,6 +4,7 @@ import { useAuth } from '#auth';
 import {
   getLiveShowState, getMe, getLiveShowAdmins, enableLiveShowDevice, liveShowUnlockAdmin,
   adminLiveShowControl, adminLiveShowDevice, liveShowChat, liveShowClearChat, liveShowAnnouncement, liveShowMovement,
+  stageFrameGet,
 } from '#api';
 import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
@@ -331,10 +332,37 @@ function MicOrCamera({ mics, video }: { mics: MicList | null; video: VideoSlot }
   const cameras = video.peers.filter((p) => p.sharing);
   const [slot, setSlot] = useState<'mics' | 'camera'>(video.watching ? 'camera' : 'mics');
   const [frames, setFrames] = useState(false);
+  const [snap, setSnap] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const picked = cameras.find((c) => c.deviceKey === video.watching) ?? null;
 
   useEffect(() => { setFrames(false); }, [video.watching]);
+
+  // Real video first, then the relay. Some school networks never give two
+  // devices a route to each other (client isolation, no multicast, STUN
+  // blocked), and waiting for a peer connection that cannot happen leaves a
+  // black box on the wall. The camera also posts JPEGs, so fall back to those.
+  useEffect(() => {
+    setSnap('');
+    if (!video.watching || frames) return;
+    let stopped = false;
+    let timer = 0;
+    const tick = async () => {
+      try {
+        const r = await stageFrameGet({ deviceKey: video.watching });
+        if (!stopped && r.frame) setSnap(r.frame);
+      } catch {
+        // A camera that has gone quiet is not an error worth a toast on stage.
+      }
+      if (!stopped) timer = window.setTimeout(tick, 400);
+    };
+    // Give WebRTC a couple of seconds to get there first: it is the better picture.
+    timer = window.setTimeout(tick, 2000);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [video.watching, frames]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -405,9 +433,15 @@ function MicOrCamera({ mics, video }: { mics: MicList | null; video: VideoSlot }
             playsInline
             muted
             onLoadedData={() => setFrames(true)}
-            className="aspect-video w-full object-cover"
+            className={cn('aspect-video w-full object-cover', snap && 'opacity-0')}
           />
-          {!frames && (
+          {snap && <img src={snap} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+          {snap && !frames && (
+            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[9px] uppercase tracking-[0.2em] text-[#8f8a97]">
+              relay
+            </span>
+          )}
+          {!frames && !snap && (
             <div className="absolute inset-0 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[#8f8a97]">
               <Loader2 className="h-3 w-3 animate-spin" />connecting…
             </div>

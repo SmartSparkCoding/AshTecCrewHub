@@ -80,3 +80,36 @@ test('the camera page is share only and dims on purpose', () => {
   // Starting a stream is the one thing it does, so there is no chat or control.
   assert.ok(!cam.includes('adminLiveShowControl'), 'the camera page must not drive the show');
 });
+
+test('a network that blocks peer-to-peer falls back to relayed frames', () => {
+  // A school wifi with client isolation gives the browsers no candidate they can
+  // reach, so the peer connection sits at "connecting" for ever and the wall
+  // screen shows a black box. The camera also posts small JPEGs, and a screen
+  // that gets no real video shows the newest one.
+  const put = read('src/api/stageFramePut.ts');
+  const get = read('src/api/stageFrameGet.ts');
+  const lib = read('src/lib/stageVideo.ts');
+  const videoSchema = schema.slice(schema.indexOf('CREATE TABLE IF NOT EXISTS "StageVideo"'));
+
+  assert.match(videoSchema, /"frame"\s+text NOT NULL DEFAULT ''/);
+  assert.match(videoSchema, /"frameAt"\s+timestamptz/);
+  // Applied to a database that already has the table from the first release.
+  assert.match(schema, /ALTER TABLE "StageVideo" ADD COLUMN IF NOT EXISTS "frame" text/);
+
+  // The camera posts one frame at a time while it is filming, at a size that
+  // fits through the same JSON body limit as everything else.
+  assert.match(cam, /stageFramePut\(\{ deviceKey: key, frame: canvas\.toDataURL\('image\/jpeg', 0\.5\) \}\)/);
+  assert.match(cam, /canvas\.width = 480/);
+  assert.match(cam, /url\(\)|setTimeout\(tick, 400\)/);
+  // Nothing is written to disk, and the frame has to really be a JPEG.
+  assert.match(put, /\^data:image\\\/jpeg;base64,/);
+  assert.match(get, /readFrame\(input\.deviceKey\)/);
+  // An old frame is worse than no frame: the camera has stopped posting.
+  assert.match(lib, /FRAME_TTL_MS = 8_000/);
+  assert.match(lib, /ageMs > FRAME_TTL_MS/);
+  // The screen tries real video first, then the relay, and says which it is on.
+  assert.match(dash, /const r = await stageFrameGet\(\{ deviceKey: video\.watching \}\)/);
+  assert.match(dash, /timer = window\.setTimeout\(tick, 2000\)/);
+  assert.match(dash, /\{snap && <img src=\{snap\}/);
+  assert.match(dash, />\s*\n?\s*relay\s*\n?\s*<\/span>/);
+});

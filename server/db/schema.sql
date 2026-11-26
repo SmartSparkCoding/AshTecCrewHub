@@ -1179,6 +1179,8 @@ CREATE TABLE IF NOT EXISTS "StageVideo" (
   "role"       text NOT NULL DEFAULT 'screen',
   "sharing"    boolean NOT NULL DEFAULT false,
   "watching"   text NOT NULL DEFAULT '',
+  "frame"      text NOT NULL DEFAULT '',
+  "frameAt"    timestamptz,
   "lastSeenAt" timestamptz NOT NULL DEFAULT now(),
   "createdAt"  timestamptz NOT NULL DEFAULT now(),
   "updatedAt"  timestamptz NOT NULL DEFAULT now()
@@ -1199,5 +1201,12 @@ CREATE TABLE IF NOT EXISTS "StageSignals" (
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS "StageSignals_to_idx" ON "StageSignals" ("toKey", "createdAt");
+
+-- A picture relay for networks that will not pass peer-to-peer video. A school
+-- wifi with client isolation gives the browsers no candidates to connect on, so
+-- the camera can post one JPEG at a time and the screens show the newest one.
+-- Same HTTPS connection the app already uses, so nothing new to unblock.
+ALTER TABLE "StageVideo" ADD COLUMN IF NOT EXISTS "frame" text NOT NULL DEFAULT '';
+ALTER TABLE "StageVideo" ADD COLUMN IF NOT EXISTS "frameAt" timestamptz;
 
 COMMIT;
