@@ -53,12 +53,24 @@ test('the viewer offers and the camera answers', () => {
   assert.match(client, /await send\(from, 'answer', answer\)/);
 });
 
-test('the stage board shows what a camera sends, and can stop', () => {
-  assert.match(dash, /Stop watching/);
+test('the camera shares the mic deck slot, and the deck takes a tap to come back', () => {
+  assert.match(dash, /function MicOrCamera/);
+  assert.match(dash, /<MicOrCamera mics=\{mics\} video=\{video\} \/>/);
+  assert.match(dash, /\{tab\('mics', 'Mics'/);
+  assert.match(dash, /\{tab\('camera', 'Camera'/);
   assert.match(dash, /connecting…/);
   assert.match(dash, /srcObject = video\.remote/);
+  // Switching back to the deck drops the connection instead of streaming on.
+  assert.match(dash, /if \(next === 'mics' && video\.watching\) video\.setWatch\(''\)/);
   // A blocked autoplay must not leave a black rectangle on a stage screen.
   assert.match(dash, /el\.muted = true/);
+});
+
+test('pointing a screen at a camera needs no PIN, because filming is the guarded half', () => {
+  assert.match(state, /watch: z\.string\(\)\.max\(120\)\.optional\(\)/);
+  assert.ok(!state.includes('verifyAdminSecret'), 'watching is a display choice, not a camera going live');
+  assert.match(share, /verifyAdminSecret/);
+  assert.match(client, /setWatch/);
 });
 
 test('the camera page is share only and dims on purpose', () => {

@@ -4,18 +4,17 @@ import { useAuth } from '#auth';
 import {
   getLiveShowState, getMe, getLiveShowAdmins, enableLiveShowDevice, liveShowUnlockAdmin,
   adminLiveShowControl, adminLiveShowDevice, liveShowChat, liveShowClearChat, liveShowAnnouncement, liveShowMovement,
-  stageVideoShare,
 } from '#api';
 import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import {
   KeyRound, Loader2, Play, Pause, RotateCcw, ChevronLeft, ChevronRight,
   ScrollText, Tv, Settings2, Users, Clapperboard, Lock, MessageSquare, Megaphone, ShieldAlert,
-  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package, Mic, Video, VideoOff,
+  Send, Monitor, Smartphone, Tablet, X, UserPlus, Pencil, Package, Mic, Video,
 } from 'lucide-react';
 import { cn } from '@project/components/lib/utils';
 import ShowIdle from '../../components/ShowIdle';
-import { useStageVideo } from '../../lib/stageVideoClient';
+import { useStageVideo, type VideoPeerInfo } from '../../lib/stageVideoClient';
 
 type Cred = { memberId: string; secret: string; name: string };
 
@@ -312,15 +311,146 @@ function UnlockModal({ onClose, onUnlocked }: { onClose: () => void; onUnlocked:
   );
 }
 
+// ---------------------------------------------------------------- mic deck / camera
+
+type VideoSlot = {
+  peers: VideoPeerInfo[];
+  watching: string;
+  remote: MediaStream | null;
+  setWatch: (target: string) => void;
+};
+
+/**
+ * Ticket 7e928a80, the way Jacob meant it: the stream belongs in the space under
+ * the crew channel, in the same slot as the mic deck, and the two take turns.
+ * The deck is what someone reads out of the corner of an eye, so it is always
+ * one tap away and never gets pushed off the screen by a video.
+ */
+function MicOrCamera({ mics, video }: { mics: MicList | null; video: VideoSlot }) {
+  const rows = mics?.rows ?? [];
+  const cameras = video.peers.filter((p) => p.sharing);
+  const [slot, setSlot] = useState<'mics' | 'camera'>(video.watching ? 'camera' : 'mics');
+  const [frames, setFrames] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const picked = cameras.find((c) => c.deviceKey === video.watching) ?? null;
+
+  useEffect(() => { setFrames(false); }, [video.watching]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = video.remote;
+    if (!video.remote) return;
+    // Chrome will not autoplay a stream with sound before a click, and a blocked
+    // autoplay is a black rectangle on a wall screen. Silent always plays.
+    void el.play().catch(() => { el.muted = true; void el.play().catch(() => undefined); });
+  }, [video.remote, slot]);
+
+  if (rows.length === 0 && cameras.length === 0 && !video.watching) return null;
+
+  const go = (next: 'mics' | 'camera') => {
+    setSlot(next);
+    // Leaving the camera puts the mic list back and drops the connection, so a
+    // screen that is showing mics is not quietly pulling video over the wifi.
+    if (next === 'mics' && video.watching) video.setWatch('');
+    if (next === 'camera' && !video.watching && cameras.length === 1) video.setWatch(cameras[0].deviceKey);
+  };
+
+  const tab = (id: 'mics' | 'camera', label: string, icon: ReactNode) => (
+    <button
+      type="button"
+      onClick={() => go(id)}
+      aria-pressed={slot === id}
+      className={cn(
+        'flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.3em] transition',
+        slot === id ? 'bg-[#f3ece1]/10 text-[#efe6d8]' : 'text-[#7e7a86] hover:text-[#a9a3b0]',
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="border-t border-[#f3ece1]/10 pt-3">
+      <div className="flex items-center gap-1">
+        {tab('mics', 'Mics', <Mic className="h-3 w-3" />)}
+        {tab('camera', 'Camera', <Video className="h-3 w-3" />)}
+        {cameras.length > 0 && slot === 'mics' && (
+          <span className="h-1.5 w-1.5 rounded-full bg-[#d9ab6c] animate-pulse" aria-label="A camera is filming" />
+        )}
+        <span className="ml-auto truncate font-mono text-[10px] uppercase tracking-[0.2em] text-[#d9ab6c]">
+          {slot === 'mics'
+            ? (mics ? (mics.cast === 'B' ? mics.castBName : mics.castAName) : '')
+            : (picked?.name || (video.watching ? 'not on' : ''))}
+        </span>
+      </div>
+
+      {slot === 'mics' ? (
+        <div className="mt-2 space-y-1">
+          {rows.length === 0 && <p className="text-sm text-[#6f6a77]">No mic list for this cast yet.</p>}
+          {rows.map((m, i) => (
+            <div key={`${m.number}-${i}`} className="flex items-baseline gap-2 leading-tight">
+              <span className="w-12 shrink-0 text-right font-mono text-sm font-bold text-[#d9ab6c]">{m.number || '–'}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-[#efe6d8]">{m.character || '—'}</span>
+              <span className="min-w-0 max-w-[45%] truncate text-xs text-[#8f8a97]">{m.performer}</span>
+            </div>
+          ))}
+        </div>
+      ) : video.watching && picked ? (
+        <div className="relative mt-2 overflow-hidden rounded-lg border border-[#f3ece1]/10 bg-black">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            onLoadedData={() => setFrames(true)}
+            className="aspect-video w-full object-cover"
+          />
+          {!frames && (
+            <div className="absolute inset-0 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[#8f8a97]">
+              <Loader2 className="h-3 w-3 animate-spin" />connecting…
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {/* The camera this screen was pointed at has gone (phone died, walked
+              out of range). Offer the others rather than a dead black box. */}
+          {video.watching && cameras.length > 0 && (
+            <p className="w-full text-[11px] text-[#8f8a97]">That camera is not on. Pick another:</p>
+          )}
+          {cameras.map((c) => (
+            <button
+              type="button"
+              key={c.deviceKey}
+              onClick={() => video.setWatch(c.deviceKey)}
+              className="rounded-full border border-[#f3ece1]/15 px-2.5 py-1 text-[11px] text-[#a9a3b0] transition hover:border-[#d9ab6c]/60 hover:text-[#efe6d8]"
+            >
+              {c.name || 'Stage camera'}
+            </button>
+          ))}
+          {cameras.length === 0 && (
+            <p className="text-sm text-[#6f6a77]">
+              No screen is filming. Open /show-dash-video on a phone to start one.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- board
 
 function BoardView({
-  board, scenes, messages, mics, canSend, onSend,
+  board, scenes, messages, mics, video, canSend, onSend,
 }: {
   board: Board;
   scenes: Scene[];
   messages: ChatMessage[];
   mics: MicList | null;
+  video: VideoSlot;
   canSend: boolean;
   onSend: (body: string) => Promise<void>;
 }) {
@@ -528,26 +658,7 @@ function BoardView({
               )}
             </div>
 
-            {mics && mics.rows.length > 0 && (
-              <div className="border-t border-[#f3ece1]/10 pt-3">
-                <div className="flex items-center gap-2 text-[#7e7a86]">
-                  <Mic className="h-3.5 w-3.5" />
-                  <p className="text-[10px] uppercase tracking-[0.4em]">Mics</p>
-                  <span className="ml-auto truncate font-mono text-[10px] uppercase tracking-[0.2em] text-[#d9ab6c]">
-                    {mics.cast === 'B' ? mics.castBName : mics.castAName}
-                  </span>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {mics.rows.map((m, i) => (
-                    <div key={`${m.number}-${i}`} className="flex items-baseline gap-2 leading-tight">
-                      <span className="w-12 shrink-0 text-right font-mono text-sm font-bold text-[#d9ab6c]">{m.number || '–'}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-[#efe6d8]">{m.character || '—'}</span>
-                      <span className="min-w-0 max-w-[45%] truncate text-xs text-[#8f8a97]">{m.performer}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <MicOrCamera mics={mics} video={video} />
 
             <div className="flex min-h-[8rem] flex-1 flex-col border-t border-[#f3ece1]/10 pt-3">
               <div className="flex items-center gap-2">
@@ -599,16 +710,13 @@ function BoardView({
 // ---------------------------------------------------------------- control panel
 
 function ControlPanel({
-  board, scenes, messages, device, cred, video, mine, onWatch, onAddAdmin, onClose, onRefresh,
+  board, scenes, messages, device, cred, onAddAdmin, onClose, onRefresh,
 }: {
   board: Board;
   scenes: Scene[];
   messages: ChatMessage[];
   device: DeviceInfo;
   cred: Cred;
-  video: { peers: { deviceKey: string; name: string; sharing: boolean }[]; watching: string };
-  mine: string;
-  onWatch: (target: string) => void;
   onAddAdmin: () => void;
   onClose: () => void;
   onRefresh: () => void;
@@ -799,37 +907,7 @@ function ControlPanel({
           <p className="text-[11px] text-[#525b6c]">Push a bump/key warning to the selected admins for THIS screen.</p>
         </div>
 
-        {/* Ticket 7e928a80. A camera shows up here within a second of an admin
-            allowing it to film, and only cameras that are actually sharing, so
-            nothing points at a phone that is asleep in a pocket. */}
-        <div className="rounded-xl border border-[#2a3040] bg-[#0f1219] p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-[#d9ab6c]" />
-            <span className="text-xs uppercase tracking-widest text-[#9aa3b2]">Stage video</span>
-            {video.watching && (
-              <Button size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs" onClick={() => onWatch('')}>
-                Stop watching
-              </Button>
-            )}
-          </div>
-          {video.peers.filter((p) => p.sharing && p.deviceKey !== mine).length === 0 ? (
-            <p className="text-[11px] text-[#525b6c]">
-              No screen is filming. Open /show-dash-video on a phone, pick an admin and enter their cat PIN to start one.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {video.peers.filter((p) => p.sharing && p.deviceKey !== mine).map((p) => {
-                const on = video.watching === p.deviceKey;
-                return (
-                  <button type="button" key={p.deviceKey} onClick={() => onWatch(on ? '' : p.deviceKey)}
-                    className={cn('rounded-full border px-2.5 py-1 text-[11px] transition', on ? 'border-[#d9ab6c] bg-[#d9ab6c]/15 font-medium text-[#e7cba1]' : 'border-[#2a3040] text-[#9aa3b2] hover:border-[#d9ab6c]/60')}>
-                    {p.name || 'Stage camera'}{on ? ' · watching' : ''}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
       </div>
     </div>
   );
@@ -899,42 +977,6 @@ export default function LiveShowDash() {
     enabled: !!device && !!board,
     liveShowId: board?.id,
   });
-  const remoteVideo = useRef<HTMLVideoElement | null>(null);
-  const [frames, setFrames] = useState(false);
-
-  useEffect(() => {
-    const el = remoteVideo.current;
-    if (!el) return;
-    el.srcObject = video.remote;
-    setFrames(false);
-    if (!video.remote) return;
-    /**
-     * Chrome will not autoplay a stream with sound until the page has been
-     * clicked, and a blocked autoplay is a black rectangle on a stage screen.
-     * Try it with the sound, then fall back to silent so the picture always comes.
-     */
-    void el.play().catch(() => {
-      el.muted = true;
-      void el.play().catch(() => undefined);
-    });
-  }, [video.remote]);
-
-  /** Point this screen at another one, or at nothing. Needs the admin PIN again. */
-  const watchScreen = useCallback(async (target: string) => {
-    const first = creds[0];
-    if (!device || !first) return;
-    try {
-      await stageVideoShare({
-        deviceKey: deviceKey(), name: device.name, memberId: first.memberId, pin: first.secret, watching: target,
-      });
-      video.reset();
-      setFrames(false);
-      toast.success(target ? 'Watching that screen' : 'Stopped watching');
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }, [device, creds, video]);
-
   const apply = useCallback((r: StatePayload) => {
     // No show running (or none set up at all): show only the cat idle screen -
     // no board, no scenes, no enable/PIN. An open-but-unenabled show still gets
@@ -1153,6 +1195,7 @@ export default function LiveShowDash() {
           scenes={scenes}
           messages={messages}
           mics={mics}
+          video={{ peers: video.peers, watching: video.watching, remote: video.remote, setWatch: video.setWatch }}
           canSend={!!cred || isAdmin}
           onSend={sendBoardChat}
         />
@@ -1160,34 +1203,6 @@ export default function LiveShowDash() {
 
       {board && !board.open && phase === 'board' && (
         <div className="border-t border-[#d9ab6c]/25 bg-[#0b0a0e]/90 px-4 py-1.5 text-center text-[10px] uppercase tracking-[0.4em] text-[#d9ab6c]">Show not started yet</div>
-      )}
-
-      {video.watching && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-black">
-          <video
-            ref={remoteVideo}
-            autoPlay
-            playsInline
-            onLoadedData={() => setFrames(true)}
-            className="min-h-0 flex-1 object-contain"
-          />
-          <div className="flex items-center gap-3 bg-[#07080a] px-4 py-3">
-            <Video className="h-4 w-4 text-[#d9ab6c]" />
-            <span className="text-sm text-cream">
-              {video.peers.find((p) => p.deviceKey === video.watching)?.name || 'Stage camera'}
-            </span>
-            {!frames && (
-              <span className="text-xs text-[#9aa3b2]">
-                {video.peers.some((p) => p.deviceKey === video.watching && p.sharing)
-                  ? 'connecting…'
-                  : 'that camera is not on'}
-              </span>
-            )}
-            <Button size="sm" variant="outline" className="ml-auto" onClick={() => void watchScreen('')}>
-              <VideoOff className="h-4 w-4 mr-1.5" />Stop watching
-            </Button>
-          </div>
-        </div>
       )}
 
       {visibleAnnouncements.length > 0 && (
@@ -1202,7 +1217,6 @@ export default function LiveShowDash() {
       {panel && board && device && cred && (
         <ControlPanel
           board={board} scenes={scenes} messages={messages} device={device} cred={cred}
-          video={video} mine={deviceKey()} onWatch={(t) => void watchScreen(t)}
           onAddAdmin={() => { setPanel(false); setUnlock(true); }}
           onClose={closePanel}
           onRefresh={() => { void refresh(); }}
