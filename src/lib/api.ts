@@ -983,6 +983,20 @@ export type SignOffShowInputType = NonNullable<_SignOffShowCfg['inputSchema']> e
 export type SignOffShowOutputType = Awaited<ReturnType<_SignOffShowCfg['execute']>>;
 export const signOffShow = createCaller<SignOffShowInputType, SignOffShowOutputType>('signOffShow');
 
+import type { default as _StageFrameGetEp } from '../api/stageFrameGet';
+
+type _StageFrameGetCfg = typeof _StageFrameGetEp;
+export type StageFrameGetInputType = NonNullable<_StageFrameGetCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_StageFrameGetCfg['execute']>[0]['input'];
+export type StageFrameGetOutputType = Awaited<ReturnType<_StageFrameGetCfg['execute']>>;
+export const stageFrameGet = createCaller<StageFrameGetInputType, StageFrameGetOutputType>('stageFrameGet');
+
+import type { default as _StageFramePutEp } from '../api/stageFramePut';
+
+type _StageFramePutCfg = typeof _StageFramePutEp;
+export type StageFramePutInputType = NonNullable<_StageFramePutCfg['inputSchema']> extends { _input: infer I } ? I : Parameters<_StageFramePutCfg['execute']>[0]['input'];
+export type StageFramePutOutputType = Awaited<ReturnType<_StageFramePutCfg['execute']>>;
+export const stageFramePut = createCaller<StageFramePutInputType, StageFramePutOutputType>('stageFramePut');
+
 import type { default as _StageVideoShareEp } from '../api/stageVideoShare';
 
 type _StageVideoShareCfg = typeof _StageVideoShareEp;
@@ -1191,6 +1205,8 @@ export const api = {
   setShowResponse,
   setTechLock,
   signOffShow,
+  stageFrameGet,
+  stageFramePut,
   stageVideoShare,
   stageVideoSignal,
   stageVideoState,
