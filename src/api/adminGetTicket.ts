@@ -42,7 +42,10 @@ export default createEndpoint({
       .sort((a, b) => (a.sentAt ?? '').localeCompare(b.sentAt ?? ''))
       .map((r) => {
         const authorId = ids(r.author)[0] ?? '';
-        return { id: r.id, kind: r.kind ?? REPLY_KIND.note, body: r.body ?? '', recipients: r.recipients ?? '', sentAt: r.sentAt ?? '', authorId, authorName: nameOf.get(authorId) ?? 'System' };
+        // An agent replying through an MCP key signs its own name, so the thread
+        // should say "gorkie", not the name on the admin account behind the key.
+        const signed = String((r as { authorName?: string }).authorName ?? '').trim();
+        return { id: r.id, kind: r.kind ?? REPLY_KIND.note, body: r.body ?? '', recipients: r.recipients ?? '', sentAt: r.sentAt ?? '', authorId, authorName: signed || nameOf.get(authorId) || 'System' };
       });
 
     return {

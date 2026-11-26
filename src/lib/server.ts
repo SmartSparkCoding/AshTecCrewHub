@@ -1,4 +1,5 @@
 // Backend-only helpers shared by endpoints in src/api/.
+import { createHash, timingSafeEqual } from 'crypto';
 import { zite } from '#db';
 import { ZiteError } from '#backend';
 import type { CrewMembersRecordType, SubEventsRecordType, ShowsRecordType } from '#db';
@@ -56,10 +57,32 @@ export async function requireAdmin(email: string) {
 // ---------------------------------------------------------------------------
 export const DECK_ID = 'main';
 
+const DECK_DEFAULT_TOKEN = 'ashtec-deck';
+
 export function requireDeckToken(token: string): void {
-  const expected = process.env.AUDIO_DECK_TOKEN || 'ashtec-deck';
-  if (!token || token !== expected) {
+  const expected = process.env.AUDIO_DECK_TOKEN || DECK_DEFAULT_TOKEN;
+  // Compared as digests: a plain === leaks how much of the token was right
+  // through timing, and this endpoint answers anybody who asks.
+  const given = createHash('sha256').update(String(token || '')).digest();
+  const want = createHash('sha256').update(expected).digest();
+  if (!token || !timingSafeEqual(given, want)) {
     throw new ZiteError({ code: 'FORBIDDEN', message: 'Bad deck token.', userFacingMessage: 'Bad deck token.' });
+  }
+}
+
+/**
+ * The deck token ships with a default so the pair works out of the box, which
+ * means a production box that never set AUDIO_DECK_TOKEN is protected by a
+ * string that is in the repository. That is worth one loud line at boot rather
+ * than a silent assumption. Nothing is refused, because the deck is on stage
+ * during a show and a hard failure would take the audio with it.
+ */
+export function warnAboutDefaultDeckToken(): void {
+  if (!process.env.AUDIO_DECK_TOKEN && (process.env.APP_URL ?? '').startsWith('https://')) {
+    console.warn(
+      '[audio deck] AUDIO_DECK_TOKEN is not set, so the deck is using the published default.' +
+        ' Anyone who can reach the site can answer its control requests. Set AUDIO_DECK_TOKEN and match it in the deck app.',
+    );
   }
 }
 

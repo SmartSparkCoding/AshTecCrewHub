@@ -111,7 +111,7 @@ export default function SupportButton() {
             )}
             {message.length > 0 && message.trim().length < 10 && <p className="text-xs text-destructive">Please add a bit more detail.</p>}
             {message.length > 15000 && (
-              <p className={cn('text-xs tabular-nums', message.length >= SUPPORT_MESSAGE_MAX ? 'text-destructive font-medium' : 'text-amber-400')}>
+              <p className={cn('text-xs tabular-nums', message.length >= SUPPORT_MESSAGE_MAX ? 'text-destructive font-medium' : 'text-amber-700 dark:text-amber-400')}>
                 {message.length} / {SUPPORT_MESSAGE_MAX}
                 {message.length >= SUPPORT_MESSAGE_MAX ? ' — limit reached' : ''}
               </p>

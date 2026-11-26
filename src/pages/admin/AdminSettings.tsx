@@ -171,7 +171,7 @@ export default function AdminSettings() {
           {skills.map((s) => (
             <span key={s} className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-1 text-xs font-medium">
               {s}
-              <button type="button" onClick={() => setSkills((prev) => prev.filter((x) => x !== s))} className="text-muted-foreground hover:text-red-500" aria-label={`Remove ${s}`}>
+              <button type="button" onClick={() => setSkills((prev) => prev.filter((x) => x !== s))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400" aria-label={`Remove ${s}`}>
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -292,13 +292,13 @@ function NotificationHealth() {
                       </span>
                     </td>
                     <td className="py-2 pr-3">
-                      <Badge variant="outline" className={p.adminAlerts ? 'border-emerald-500/40 text-emerald-400' : undefined}>
+                      <Badge variant="outline" className={p.adminAlerts ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400' : undefined}>
                         {p.adminAlerts ? 'On' : 'Off'}
                       </Badge>
                     </td>
                     <td className="py-2 pr-3">
                       {devices.length === 0 ? (
-                        <span className="text-xs text-rose-400">None subscribed</span>
+                        <span className="text-xs text-rose-700 dark:text-rose-400">None subscribed</span>
                       ) : (
                         <ul className="space-y-0.5">
                           {devices.map((d, i) => (
@@ -347,15 +347,15 @@ function ListEditor({ label, values, onChange }: { label: string; values: string
         {values.map((v) => (
           <span key={v} className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium">
             {v}
-            <button type="button" onClick={() => onChange(values.filter((x) => x !== v))} className="text-muted-foreground hover:text-red-500" aria-label={`Remove ${v}`}>
+            <button type="button" onClick={() => onChange(values.filter((x) => x !== v))} className="text-muted-foreground hover:text-red-700 dark:hover:text-red-400" aria-label={`Remove ${v}`}>
               <X className="h-3 w-3" />
             </button>
           </span>
         ))}
       </div>
       <div className="flex gap-2">
-        <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} placeholder="Add…" className="h-8" />
-        <Button size="sm" variant="outline" disabled={!draft.trim()} onClick={add}><Plus className="h-3.5 w-3.5" /></Button>
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} placeholder="Add…" aria-label="Add an option" className="h-8" />
+        <Button size="sm" variant="outline" disabled={!draft.trim()} onClick={add} aria-label="Add this option"><Plus className="h-3.5 w-3.5" /></Button>
       </div>
     </div>
   );

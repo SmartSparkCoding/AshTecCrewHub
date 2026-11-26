@@ -55,6 +55,15 @@
     --chart-3: 0 70% 58%;
     --chart-4: 48 90% 60%;
     --chart-5: 200 60% 55%;
+    /* The tint band and the "ink" plate are set by each look in src/lib/themes.ts,
+       but nothing declared them for the plain palette, so a first paint (or a
+       custom theme that leaves them out) rendered hsl(var(--tint-2)) as nothing
+       and the chips went transparent. */
+    --ink: 230 30% 10%;
+    --tint-1: 36 90% 92%;
+    --tint-2: 190 60% 90%;
+    --tint-3: 340 70% 92%;
+    --tint-4: 150 45% 90%;
     --font-sans: 'Outfit', 'Helvetica Neue', sans-serif;
   --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -459,11 +468,13 @@ html.dark[data-theme='school'] [class*='bg-[linear-gradient'],
 html.dark[data-theme]:not([data-theme='ashtec']) [class*='background-image:'] {
   background-image: none !important;
 }
+/* Note: the translucent variants (bg-white/70, bg-black/60) are deliberately
+   left alone. They are scrims, not panels: the drawer backdrop, the tutorial's
+   hole in the page and the photo lightbox all rely on seeing through them, and
+   painting those solid turned three overlays into opaque walls. */
 html.dark[data-theme]:not([data-theme='ashtec']) [class*='bg-[#'],
 html.dark[data-theme]:not([data-theme='ashtec']) [class~='bg-white'],
-html.dark[data-theme]:not([data-theme='ashtec']) [class*='bg-white/'],
-html.dark[data-theme]:not([data-theme='ashtec']) [class~='bg-black'],
-html.dark[data-theme]:not([data-theme='ashtec']) [class*='bg-black/'] {
+html.dark[data-theme]:not([data-theme='ashtec']) [class~='bg-black'] {
   background-color: hsl(var(--card)) !important;
   background-image: none !important;
 }

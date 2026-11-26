@@ -93,7 +93,7 @@ export default function Widget() {
             </div>
           </>
         )}
-        {stale ? <div className="mt-3 text-center text-xs text-amber-400">Offline: showing your last known schedule.</div> : null}
+        {stale ? <div className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">Offline: showing your last known schedule.</div> : null}
       </div>
     </div>
   );

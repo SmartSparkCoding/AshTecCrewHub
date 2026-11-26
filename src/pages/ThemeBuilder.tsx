@@ -28,7 +28,7 @@ function Swatches({ vars }: { vars: Record<string, string> }) {
       {dots.map((dot, i) => (
         <span
           key={i}
-          className="h-4 w-4 rounded-full border border-black/20"
+          className="h-4 w-4 rounded-full border border-border"
           style={{ background: `hsl(${dot})` }}
         />
       ))}
@@ -182,7 +182,7 @@ function ThemeBuilder() {
                 aria-pressed={selected}
               >
                 <span
-                  className="h-3.5 w-3.5 rounded-full border border-black/20"
+                  className="h-3.5 w-3.5 rounded-full border border-border"
                   style={{ background: `hsl(${themeVars(theme.id, p.id)['--primary']})` }}
                 />
                 {p.name}

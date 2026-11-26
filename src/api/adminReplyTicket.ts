@@ -49,7 +49,7 @@ export default createEndpoint({
     const sentAt = new Date().toISOString();
     await zite.supportReplies.create({
       record: {
-        ticket: ticket.id, author: admin.id, kind: REPLY_KIND.toUser,
+        ticket: ticket.id, author: admin.id, authorName: adminName, kind: REPLY_KIND.toUser,
         body: input.message.trim(), recipients: submitter.schoolEmail, sentAt,
         emailMessageId: result?.messageId ?? '',
       } as never,

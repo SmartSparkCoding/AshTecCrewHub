@@ -70,7 +70,7 @@ export default function Apps() {
               />
               <Button onClick={unlock}>Unlock</Button>
             </div>
-            {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+            {error && <p className="mt-3 text-sm text-red-700 dark:text-red-400">{error}</p>}
           </div>
         </section>
       ) : (

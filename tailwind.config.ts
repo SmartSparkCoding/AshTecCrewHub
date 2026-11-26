@@ -21,6 +21,9 @@ const tailwindConfig: Config = {
         mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
       },
       colors: {
+        // The stage board writes text-cream in fifteen places and Tailwind had no
+        // such colour, so those inputs and headings silently inherited instead.
+        cream: '#f3ece1',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

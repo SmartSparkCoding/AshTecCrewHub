@@ -74,7 +74,7 @@ function ShowCard({ show, onZoom }: { show: ShowMem; onZoom: (z: { url: string; 
           </p>
         </div>
         {show.finished
-          ? <Badge className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15"><Sparkles className="mr-1 h-3 w-3" />Run complete</Badge>
+          ? <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15"><Sparkles className="mr-1 h-3 w-3" />Run complete</Badge>
           : <Badge variant="outline">In progress</Badge>}
       </div>
 

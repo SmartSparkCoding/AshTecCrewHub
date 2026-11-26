@@ -9,8 +9,28 @@
     <title>AshTec Crew Hub</title>
 
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Replaced at runtime by syncThemeColor() in src/lib/theme.ts, which
+         reads the page background, so light-mode members do not get a black
+         status bar over a cream page. This is the first-paint default. -->
     <meta name="theme-color" content="#0c0d13" />
     <meta name="description" content="The Ashford School Tech Crew hub: events, venue check-in and the crew calendar." />
+
+    <!-- Link previews. The parents page gets pasted into WhatsApp groups, and
+         without these it arrived as a bare address with no title or picture.
+         og:image has to be absolute, because the scrapers do not resolve it
+         against the page they fetched. -->
+    <meta property="og:site_name" content="AshTec Crew Hub" />
+    <meta property="og:title" content="AshTec Crew Hub" />
+    <meta property="og:description" content="The Ashford School Tech Crew hub: events, venue check-in and the crew calendar." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://ashtec.dino.icu/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="AshTec Crew Hub" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AshTec Crew Hub" />
+    <meta name="twitter:description" content="The Ashford School Tech Crew hub: events, venue check-in and the crew calendar." />
+    <meta name="twitter:image" content="https://ashtec.dino.icu/og.png" />
 
     <!-- iOS does not read the web app manifest for these, so they are set here. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

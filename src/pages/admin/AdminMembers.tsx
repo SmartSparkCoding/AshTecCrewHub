@@ -25,7 +25,7 @@ import MemberAvatar from '../../components/MemberAvatar';
 import RemindButton from '../../components/admin/RemindButton';
 import MultiFilter from '../../components/admin/MultiFilter';
 
-const RESP_STYLE: Record<string, string> = { Yes: 'text-emerald-400', Maybe: 'text-yellow-400', No: 'text-red-400' };
+const RESP_STYLE: Record<string, string> = { Yes: 'text-emerald-700 dark:text-emerald-400', Maybe: 'text-yellow-700 dark:text-yellow-400', No: 'text-red-700 dark:text-red-400' };
 
 export default function AdminMembers() {
   const { data, reload } = useAdminData();
@@ -129,7 +129,7 @@ export default function AdminMembers() {
           <Badge variant="outline">{m.memberType}</Badge>
           {m.year && <span className="text-xs text-muted-foreground">{m.year}</span>}
           {!!outstanding.get(m.id) && (
-            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30" variant="outline">
+            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" variant="outline">
               {outstanding.get(m.id)} form{outstanding.get(m.id) === 1 ? '' : 's'} due
             </Badge>
           )}
@@ -164,7 +164,7 @@ export default function AdminMembers() {
             <LogIn className="h-4 w-4" />
           </Button>
         )}
-        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setDel(m); }}><Trash2 className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title={`Delete ${m.firstName} ${m.lastName}`} aria-label={`Delete ${m.firstName} ${m.lastName}`} onClick={(e) => { e.stopPropagation(); setDel(m); }}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </>
   );

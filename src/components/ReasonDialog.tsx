@@ -17,8 +17,8 @@ export default function ReasonDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>Tell the stage manager why you can’t attend, in at least 8 words.</DialogDescription>
         </DialogHeader>
-        <Textarea rows={4} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. I have a family event that weekend which was booked months ago" />
-        <p className={`text-xs ${n >= 8 ? 'text-emerald-400' : 'text-muted-foreground'}`}>{n} / 8 words</p>
+        <Textarea aria-label="Why you cannot make it" rows={4} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. I have a family event that weekend which was booked months ago" />
+        <p className={`text-xs ${n >= 8 ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{n} / 8 words</p>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button disabled={n < 8 || busy} onClick={() => onSubmit(reason.trim())}>Save</Button>

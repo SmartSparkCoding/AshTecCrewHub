@@ -48,6 +48,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { zite } from '#db';
 import * as rateLimit from './rateLimit.js';
 import { runDeploy } from './deploy.js';
+import { ensureFeedKey, rotateFeedKey, feedUrl } from './mcpFeed.js';
 import { sendBlast } from './blast.js';
 import { sendMembers } from './mailMembers.js';
 import type { EndpointConfig } from './backend.js';
@@ -252,6 +253,7 @@ const INSTRUCTIONS = [
 ].join('\n');
 
 const str = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'string', description, ...extra });
+const num = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'number', description, ...extra });
 
 /** The short version of an open show, shared by the overview and live_show tools. */
 async function describeLiveShow(show: Awaited<ReturnType<typeof openLiveShow>>) {
@@ -347,7 +349,11 @@ const TOOLS = [
     description: 'Support tickets, newest first, with status, severity and whether each one is waiting on a maintainer.',
     inputSchema: {
       type: 'object',
-      properties: { openOnly: { type: 'boolean', description: 'Only tickets that are not closed (default true).' } },
+      properties: {
+        openOnly: { type: 'boolean', description: 'Only tickets that are not closed (default true).' },
+        limit: num('How many to return, 1 to 200. Default 50.'),
+        page: num('Page number, starting at 1. Use it when total is bigger than limit.'),
+      },
       additionalProperties: false,
     },
     run: async (byName: Endpoints, args: any) => {
@@ -365,7 +371,18 @@ const TOOLS = [
           replies: t.replyCount,
           waitingOnMaintainer: !!t.maintainerTurn,
         }));
-      return { tickets: rows.slice(0, 50), total: rows.length };
+      // The queue used to be cut at 50 with nothing to say more existed, so a
+      // ticket past the fiftieth was invisible to an agent.
+      const limit = Math.min(200, Math.max(1, Math.round(Number(args.limit ?? 50) || 50)));
+      const page = Math.max(1, Math.round(Number(args.page ?? 1) || 1));
+      const from = (page - 1) * limit;
+      return {
+        tickets: rows.slice(from, from + limit),
+        total: rows.length,
+        page,
+        pages: Math.max(1, Math.ceil(rows.length / limit)),
+        moreAfterThisPage: from + limit < rows.length,
+      };
     },
   },
   {
@@ -985,6 +1002,43 @@ const TOOLS = [
     run: async (byName: Endpoints, args: any) => {
       const r: any = await call(byName, 'customThemes', { action: 'delete', id: args.id });
       return { ok: true, themes: (r?.themes ?? []).length };
+    },
+  },
+  {
+    name: 'server_health',
+    description:
+      'Check the server is up: whether the database answers, how many endpoints are mounted, and whether anything looks wrong. Read-only.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    run: async (byName: Endpoints) => {
+      const started = Date.now();
+      let db = 'down';
+      try {
+        await zite.sql({ query: 'SELECT 1', params: [] });
+        db = 'up';
+      } catch (e) {
+        db = `down: ${(e as Error)?.message ?? 'no answer'}`;
+      }
+      return {
+        db,
+        endpoints: byName.size,
+        uptimeMinutes: Math.round(process.uptime() / 60),
+        nodeVersion: process.version,
+        checkedInMs: Date.now() - started,
+      };
+    },
+  },
+  {
+    name: 'feed_key',
+    description:
+      'The address of the MCP activity feed (RSS and a readable page). Read-only unless rotate is true, which makes a new address and revokes every old one.',
+    inputSchema: {
+      type: 'object',
+      properties: { rotate: { type: 'boolean', description: 'Make a new address and revoke the old one.' } },
+      additionalProperties: false,
+    },
+    run: async (_byName: Endpoints, args: any) => {
+      const key = args.rotate === true ? await rotateFeedKey() : await ensureFeedKey();
+      return { url: feedUrl(key), rotated: args.rotate === true, note: 'Anyone with this address can read the feed. Rotating revokes the old one.' };
     },
   },
   {

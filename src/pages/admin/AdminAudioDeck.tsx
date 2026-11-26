@@ -111,7 +111,7 @@ export default function AdminAudioDeck() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={d.online ? 'border-emerald-500/40 text-emerald-400' : 'border-red-500/40 text-red-400'}>
+          <Badge variant="outline" className={d.online ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400' : 'border-red-500/40 text-red-700 dark:text-red-400'}>
             <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${d.online ? 'bg-emerald-400' : 'bg-red-400'}`} />
             {d.online ? 'deck online' : 'deck offline'}
           </Badge>
@@ -124,7 +124,7 @@ export default function AdminAudioDeck() {
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-400">{error}</div>}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Now">
@@ -133,7 +133,7 @@ export default function AdminAudioDeck() {
             k="State"
             v={
               status.playing ? (
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">playing</Badge>
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">playing</Badge>
               ) : (
                 <Badge variant="outline" className="text-muted-foreground">paused</Badge>
               )
@@ -154,7 +154,7 @@ export default function AdminAudioDeck() {
                 <span className="text-sm">
                   Control active for <b className="font-mono">{clock(control.approved.until)}</b>
                 </span>
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">granted by the operator</Badge>
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">granted by the operator</Badge>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => command('play')} disabled={busy}>

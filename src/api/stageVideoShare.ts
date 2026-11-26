@@ -42,7 +42,7 @@ export default createEndpoint({
     }
 
     const show = await liveShowForVideo(input.liveShowId);
-    if (!show) throw new Error('No show is open, so there is nothing to stream.');
+    if (!show) throw new ZiteError('No show is open, so there is nothing to stream.', 'BAD_REQUEST');
     const liveShowId = String(show.id);
 
     const existing = await zite.stageVideo.findOne({ filters: { deviceKey: input.deviceKey } }).catch(() => null);

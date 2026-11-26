@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createEndpoint } from '#backend';
+import { createEndpoint, ZiteError } from '#backend';
 import { zite } from '#db';
 import { findMemberByEmail, requireAdmin } from '../lib/server';
 import { mapLiveShow, liveShowElapsedMs, isLiveShowStatus } from '../lib/liveShow';
@@ -37,11 +37,11 @@ export default createEndpoint({
       const secret = input.secret ?? '';
       const member = email ? await findMemberByEmail(email) : undefined;
       if (!member?.isAdmin || !secret || !(await verifyAdminSecret(email, secret))) {
-        throw new Error('Admins only.');
+        throw new ZiteError('Admins only.', 'FORBIDDEN');
       }
     }
     const ls = await zite.liveShows.findOne({ id: input.liveShowId });
-    if (!ls) throw new Error('Live show not found.');
+    if (!ls) throw new ZiteError('Live show not found.', 'NOT_FOUND');
     const record: Record<string, unknown> = {};
     switch (input.action) {
       case 'start':
@@ -77,7 +77,7 @@ export default createEndpoint({
         if (Array.isArray(input.movementAdmins)) record.movementAdmins = [...new Set(input.movementAdmins)];
         break;
       default:
-        throw new Error(`Unknown live show action: ${input.action}`);
+        throw new ZiteError(`Unknown live show action: ${input.action}`, 'BAD_REQUEST');
     }
     await zite.liveShows.update({ id: ls.id, record });
     const updated = (await zite.liveShows.findOne({ id: ls.id })) ?? ls;

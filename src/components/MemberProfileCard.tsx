@@ -69,7 +69,7 @@ export default function MemberProfileCard({ memberId, onClose }: { memberId: str
 
             <div className="space-y-4">
               {m.email ? (
-                <a href={`mailto:${m.email}`} className="flex items-center gap-2 text-sm hover:underline">
+                <a href={`mailto:${m.email}`} className="flex min-w-0 items-center gap-2 break-all text-sm hover:underline">
                   <Mail className="h-4 w-4 text-primary" /> {m.email}
                 </a>
               ) : (

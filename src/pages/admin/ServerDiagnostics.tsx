@@ -28,8 +28,8 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 const ok = (b: boolean) =>
-  b ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">yes</Badge>
-    : <Badge variant="outline" className="border-red-500/40 text-red-400">no</Badge>;
+  b ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">yes</Badge>
+    : <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-400">no</Badge>;
 
 function ago(iso: string | null): string {
   if (!iso) return 'never';
@@ -84,9 +84,9 @@ export default function ServerDiagnostics() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {healthy ? (
-              <span className="inline-flex items-center gap-1.5 text-emerald-400"><CheckCircle2 className="h-4 w-4" />Everything configured</span>
+              <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" />Everything configured</span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-amber-400"><TriangleAlert className="h-4 w-4" />Something needs attention</span>
+              <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><TriangleAlert className="h-4 w-4" />Something needs attention</span>
             )}
             <span className="ml-2">Generated {new Date(d.generatedAt).toLocaleTimeString('en-GB')}</span>
           </p>
@@ -146,7 +146,7 @@ export default function ServerDiagnostics() {
 
       <Card title="Table counts">
         {Object.entries(d.database.counts).map(([k, v]) => (
-          <Row key={k} k={k} v={v === null ? <span className="text-red-400">missing</span> : v} />
+          <Row key={k} k={k} v={v === null ? <span className="text-red-700 dark:text-red-400">missing</span> : v} />
         ))}
       </Card>
 
@@ -161,7 +161,7 @@ export default function ServerDiagnostics() {
       </Card>
 
       <Card title="Schema">
-        <Row k="Missing tables" v={d.schema.missingTables.length ? d.schema.missingTables.join(', ') : <span className="inline-flex items-center gap-1 text-emerald-400"><CheckCircle2 className="h-4 w-4" />none</span>} />
+        <Row k="Missing tables" v={d.schema.missingTables.length ? d.schema.missingTables.join(', ') : <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" />none</span>} />
       </Card>
 
       <LogsDialog open={logsOpen} onClose={() => setLogsOpen(false)} />

@@ -52,9 +52,17 @@ export async function liveShowForVideo(liveShowId?: string) {
 
 /** Every device that is still polling, sharing or not, for the picker to show. */
 export async function loadVideoPeers(liveShowId: string): Promise<VideoPeer[]> {
-  const { records } = await zite.stageVideo.findAll({ filters: { liveShow: liveShowId }, limit: 50 });
+  // Every screen polls this a few times a second, and each row also carries the
+  // last relayed JPEG (up to 400 kB). Ask for the columns the peer list needs so
+  // a poll does not drag the pictures across for nobody to look at.
+  const { rows } = await zite.sql({
+    query:
+      'SELECT "deviceKey", "name", "role", "sharing", "watching", "lastSeenAt" FROM "StageVideo" ' +
+      'WHERE "liveShow" = $1 LIMIT 50',
+    params: [liveShowId],
+  });
   const now = Date.now();
-  return records
+  return (rows as Record<string, any>[])
     .map(mapVideoPeer)
     .filter((p) => p.deviceKey && now - Date.parse(p.lastSeenAt) < PEER_STALE_MS)
     .sort((a, b) => Number(b.sharing) - Number(a.sharing) || a.name.localeCompare(b.name));
@@ -66,6 +74,24 @@ export async function sweepSignals(liveShowId: string): Promise<void> {
   await zite.sql({
     query: 'DELETE FROM "StageSignals" WHERE "liveShow" = $1 AND "createdAt" < $2',
     params: [liveShowId, cutoff],
+  }).catch(() => undefined);
+}
+
+/**
+ * Old devices never leave on their own: a phone that is switched off mid-show
+ * never says goodbye, so its row (and the last JPEG it sent, up to 400 kB)
+ * would sit in the table for good. Nothing older than a day can still be on the
+ * wifi, so the rows go. Runs a fraction of the time, because every screen polls
+ * this endpoint a few times a second and a clean-up on each one is wasted work.
+ */
+export const PEER_ROW_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function sweepVideoPeers(): Promise<void> {
+  if (Math.random() > 0.02) return;
+  const cutoff = new Date(Date.now() - PEER_ROW_TTL_MS).toISOString();
+  await zite.sql({
+    query: 'DELETE FROM "StageVideo" WHERE "lastSeenAt" < $1',
+    params: [cutoff],
   }).catch(() => undefined);
 }
 
@@ -114,21 +140,30 @@ export const FRAME_MAX = 400_000;
 /** A frame older than this is not worth showing: the camera has stopped posting. */
 export const FRAME_TTL_MS = 8_000;
 
-export async function putFrame(deviceKey: string, liveShowId: string, frame: string) {
+export type FramePutResult = 'ok' | 'missing' | 'idle';
+
+export async function putFrame(deviceKey: string, liveShowId: string, frame: string): Promise<FramePutResult> {
   const existing = await zite.stageVideo.findOne({ filters: { deviceKey } }).catch(() => null);
   const now = new Date().toISOString();
-  if (!existing) return false;
+  if (!existing) return 'missing';
+  // Only a screen that is actually filming may push frames. Without this, any
+  // device key could fill this column with arbitrary pictures over the public
+  // endpoint, and the stage board would show whatever they sent.
+  if (String(existing.role ?? '') !== 'camera' || !existing.sharing) return 'idle';
   await zite.stageVideo.update({
     id: String(existing.id),
     record: { frame, frameAt: now, lastSeenAt: now, liveShow: liveShowId },
   });
-  return true;
+  return 'ok';
 }
 
 /** The newest frame from one camera, or '' if it has gone quiet. */
 export async function readFrame(deviceKey: string) {
   const row = await zite.stageVideo.findOne({ filters: { deviceKey } }).catch(() => null);
   if (!row) return { frame: '', ageMs: -1 };
+  // Stopped filming means stopped sharing: the last frame must not stay
+  // readable after the phone has been put away.
+  if (String(row.role ?? '') !== 'camera' || !row.sharing) return { frame: '', ageMs: -1 };
   const at = row.frameAt ? Date.parse(String(row.frameAt)) : 0;
   const ageMs = at ? Date.now() - at : -1;
   if (!row.frame || ageMs < 0 || ageMs > FRAME_TTL_MS) return { frame: '', ageMs };

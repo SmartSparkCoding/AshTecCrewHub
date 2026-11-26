@@ -113,7 +113,7 @@ export default function StaffHub() {
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {s.present.length === 0 && <span className="text-sm text-muted-foreground">No one ticked in.</span>}
                   {s.present.map((id: string) => (
-                    <span key={id} className="text-xs px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">{nameOf.get(id) ?? 'Member'}</span>
+                    <span key={id} className="text-xs px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">{nameOf.get(id) ?? 'Member'}</span>
                   ))}
                 </div>
               </div>

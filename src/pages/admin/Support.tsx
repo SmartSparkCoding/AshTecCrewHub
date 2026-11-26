@@ -246,7 +246,7 @@ export default function Support() {
       />
       <div className="flex-1 min-w-0">
         <p className="font-medium flex items-center gap-1.5 min-w-0">
-          {t.pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" />}
+          {t.pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-400" />}
           <span className="truncate">{t.subject}</span>
           <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </p>
@@ -280,7 +280,7 @@ export default function Support() {
         <Badge variant="outline" className={TYPE_STYLE[t.type]}>{t.type}</Badge>
         <Badge variant="outline" className={STATUS_STYLE[t.status]}>{t.status}</Badge>
         {t.pinned && (
-          <Badge variant="outline" className="border-amber-500/40 text-amber-400">
+          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
             <Pin className="h-3 w-3 mr-1" />Pinned
           </Badge>
         )}

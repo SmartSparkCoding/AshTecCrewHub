@@ -15,6 +15,8 @@
  * Bump CACHE when the shell changes; the old cache is dropped on activate.
  */
 const CACHE = 'ashtec-shell-v1';
+/** How long a navigation waits for the network before using the cached shell. */
+const NAV_TIMEOUT_MS = 4000;
 const SHELL = [
   '/',
   '/index.html',
@@ -52,8 +54,21 @@ self.addEventListener('fetch', (event) => {
   // Auth and data must always hit the network.
   if (url.pathname.startsWith('/api/')) return;
 
+  // Never hand out a cached copy of a download or the update manifest: someone
+  // checking for a new version must not be told about the one they already have.
+  if (url.pathname.startsWith('/downloads/')) return;
+
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')));
+    // A school wifi that accepts the connection and then stalls used to leave the
+    // page spinning for ever with a perfectly good shell sitting in the cache.
+    // Give the network a few seconds, then open the cached shell instead.
+    event.respondWith(
+      Promise.race([
+        fetch(request),
+        new Promise((resolve) => setTimeout(() => resolve(null), NAV_TIMEOUT_MS)),
+      ]).then((response) => response || caches.match('/index.html').then((c) => c || fetch(request)))
+        .catch(() => caches.match('/index.html').then((c) => c || Response.error()))
+    );
     return;
   }
 

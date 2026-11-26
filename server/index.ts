@@ -16,7 +16,7 @@ import './env.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { readdirSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { ZiteError, type EndpointConfig, type ZiteSchedule, type ZiteScheduledContext } from './backend.js';
@@ -39,6 +39,7 @@ import { logRequest, logPageView, setViewDuration, pruneActivity } from './activ
 import { notifyServerError } from './notify.js';
 import { pruneNotifications, pruneNotificationHistory } from './push.js';
 import { db } from './db/index.js';
+import { warnAboutDefaultDeckToken } from '../src/lib/server.js';
 import { mountMcp } from './mcp.js';
 import { readFeedKey, buildMcpFeed, buildMcpFeedPage } from './mcpFeed.js';
 
@@ -69,6 +70,24 @@ async function loadEndpoints(): Promise<AnyEndpoint[]> {
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
+
+// ------------------------------------------------------------ security headers
+// Nothing was sending these, so a link to a ticket page or a stray upload could
+// be framed by another site, a browser could sniff a text file as HTML, and the
+// full address of an internal page leaked to whatever the visitor clicked next.
+// Cheap to add, no behaviour change for the app itself, and `camera=(self)`
+// keeps the stage camera page working while refusing it to any other origin.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  if ((process.env.APP_URL ?? '').startsWith('https://')) {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
 
 // ----------------------------------------------------------------- activity log
 // Records every request (method, path, status, latency, member, device,
@@ -129,6 +148,14 @@ async function saveImageUpload(
 }
 
 /** The signed-in member's id, or their email if the row cannot be found. */
+/**
+ * Twenty pictures a minute, per member. A profile picture is a once-a-term
+ * thing and a support ticket is rarely more than a couple of screenshots, so
+ * this only ever catches something that has gone wrong (a stuck retry loop, or
+ * someone using the upload as free storage).
+ */
+const UPLOAD_PER_MINUTE = 20;
+
 async function uploadOwner(req: Request): Promise<string | null> {
   const user = await getSessionUser(req);
   if (!user) return null;
@@ -140,6 +167,9 @@ app.post('/api/uploadAvatar', express.json({ limit: '6mb' }), async (req: Reques
   try {
     const owner = await uploadOwner(req);
     if (!owner) return res.status(401).json({ statusCode: 401, code: 'UNAUTHORIZED', message: 'Not signed in' });
+    if (!rateLimit.allow(`upload:${owner}`, UPLOAD_PER_MINUTE, 60 * 1000)) {
+      return res.status(429).json({ message: 'That is a lot of pictures in a minute. Try again shortly.' });
+    }
     return await saveImageUpload(req, res, {
       dir: AVATAR_DIR, prefix: AVATAR_URL_PREFIX, maxBytes: AVATAR_MAX_BYTES, owner,
       tooBig: 'That image is larger than 2 MB.',
@@ -156,6 +186,9 @@ app.post('/api/uploadTicketImage', express.json({ limit: '6mb' }), async (req: R
   try {
     const owner = await uploadOwner(req);
     if (!owner) return res.status(401).json({ statusCode: 401, code: 'UNAUTHORIZED', message: 'Not signed in' });
+    if (!rateLimit.allow(`upload:${owner}`, UPLOAD_PER_MINUTE, 60 * 1000)) {
+      return res.status(429).json({ message: 'That is a lot of pictures in a minute. Try again shortly.' });
+    }
     return await saveImageUpload(req, res, {
       dir: TICKET_IMAGE_DIR, prefix: TICKET_IMAGE_URL_PREFIX, maxBytes: AVATAR_MAX_BYTES, owner,
       tooBig: 'That image is larger than 2 MB.',
@@ -168,7 +201,18 @@ app.post('/api/uploadTicketImage', express.json({ limit: '6mb' }), async (req: R
 
 // Same reason as above: under /api so the proxy forwards it here. Immutable +
 // one-year cache because the file name contains a content hash.
-app.use('/api/uploads', express.static(path.join(root, 'uploads'), { maxAge: '365d', immutable: true, index: false }));
+app.use(
+  '/api/uploads',
+  express.static(path.join(root, 'uploads'), {
+    maxAge: '365d',
+    immutable: true,
+    index: false,
+    // Ticket screenshots and profile pictures are reachable by anyone holding
+    // the URL, which is what makes them work in an <img>. That is not the same
+    // as being public: keep them out of search indexes.
+    setHeaders: (res) => res.setHeader('X-Robots-Tag', 'noindex, nofollow'),
+  }),
+);
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -193,6 +237,9 @@ app.post('/api/analyticsLeave', async (req, res) => {
 // cookie it sets is only honoured while the real session behind it is an
 // admin's, so leaving is the same click whether or not anything is going on.
 app.get('/api/actAs', async (req: Request, res: Response) => {
+  // Who you are acting as is identity, not data. A shared tablet or a
+  // back-forward restore must not show the last admin's impersonation bar.
+  res.setHeader('Cache-Control', 'no-store');
   try {
     const act = await getActAs(req);
     if (!act) return res.json({ acting: null });
@@ -498,6 +545,10 @@ app.post('/api/auth/cat-login', async (req, res) => {
 });
 
 app.get('/api/auth/session', async (req, res) => {
+  // Who you are is the one thing that must never come out of a cache: a shared
+  // tablet, a school proxy, or a back/forward restore would hand one member
+  // another member's identity.
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ user: await getSessionUser(req) });
 });
 
@@ -538,7 +589,12 @@ app.get('/calendar.ics', async (req, res) => {
 app.get('/mcp/feed/:name', async (req, res) => {
   const given = String(req.params.name || '').replace(/\.xml$/i, '');
   const key = await readFeedKey();
-  if (!key || given !== key) return res.status(404).type('text/plain').send('Not found');
+  // Compared as digests so the check takes the same time whatever part of the
+  // key was guessed, the same rule the MCP token check already follows.
+  const sameKey =
+    !!key &&
+    timingSafeEqual(createHash('sha256').update(given).digest(), createHash('sha256').update(key).digest());
+  if (!sameKey) return res.status(404).type('text/plain').send('Not found');
   // Ticket 21b92db3: "Make the RSS feed look nicer, looks horrible at the
   // moment!" A browser asks for text/html and gets a page; a reader asks for
   // the feed itself and gets the XML, at the same address.
@@ -606,8 +662,38 @@ app.get('/healthz', async (_req, res) => {
     await db().query('SELECT 1');
     res.json({ ok: true, endpoints: endpoints.length });
   } catch (e: any) {
-    res.status(503).json({ ok: false, error: e?.message });
+    // The monitor only needs to know it is down. The driver's message could
+    // name the database, the user or the host, and /healthz is open to anyone.
+    console.error('[healthz] database check failed:', e);
+    res.status(503).json({ ok: false, error: 'Database unavailable' });
   }
+});
+
+/**
+ * The crawler rules. Nothing behind a sign-in is worth indexing, and the two
+ * stage pages are for screens on a wall, so only the public pages are open.
+ * Everything under /api/ is a POST anyway; listing it keeps the crawler from
+ * trying.
+ */
+app.get('/robots.txt', (_req, res) => {
+  res
+    .type('text/plain')
+    .set('Cache-Control', 'public, max-age=86400')
+    .send(
+      [
+        'User-agent: *',
+        'Disallow: /api/',
+        'Disallow: /admin',
+        'Disallow: /profile',
+        'Disallow: /show-dash',
+        'Disallow: /show-dash-video',
+        'Disallow: /watch',
+        'Disallow: /widget',
+        'Disallow: /tools',
+        'Allow: /',
+        '',
+      ].join('\n'),
+    );
 });
 
 // --------------------------------------------------------------- static + spa
@@ -682,4 +768,5 @@ process.on('unhandledRejection', (reason: any) => {
 app.listen(PORT, () => {
   console.log(`[server] AshTec Crew Hub listening on :${PORT} (app url ${process.env.APP_URL ?? 'unset'})`);
   if (!byName.size) console.warn('[server] no endpoints mounted');
+  warnAboutDefaultDeckToken();
 });

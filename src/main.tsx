@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
-import { HammerIcon } from 'lucide-react';
+import { AlertTriangle, HammerIcon, RotateCw } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
@@ -21,24 +21,28 @@ function RuntimeErrorFallback(props: { error: Error }) {
 
   return (
     <div className="fixed inset-0 grid place-items-center">
-      <div className="relative w-full max-w-xl rounded border-t-4 border-t-red-500 bg-white p-4 shadow-lg">
+      {/* This card is the one screen that can appear before any theme is
+          applied, so it uses the colour variables (which have defaults in
+          index.css) rather than fixed whites and greys that assume light mode. */}
+      <div className="relative m-4 w-full max-w-xl rounded-[var(--radius)] border border-t-4 border-border border-t-destructive bg-card p-4 text-card-foreground shadow-lg">
         <h3 className="mb-2 flex items-center gap-2 font-medium">
-          Issue rendering the app
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          This screen broke
         </h3>
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="mb-4 text-sm text-muted-foreground">
           {allowAiFix
-            ? 'The app hit an unexpected error. You can try reloading the page.'
-            : 'Something went wrong while loading this app. You can try reloading the page.'}
+            ? 'The app hit an unexpected error. Reloading usually clears it.'
+            : 'Something went wrong while loading this page. Reloading usually clears it, and if it keeps happening, tell an admin so they know it is still there.'}
         </p>
 
-        <pre className="overflow-auto rounded border-l-4 border-red-500 bg-red-50 p-4 font-mono text-sm text-red-900">
+        <pre className="overflow-auto rounded border-l-4 border-destructive bg-muted p-4 font-mono text-sm text-foreground">
           {props.error.message}
         </pre>
         <div className="mt-4 flex gap-2">
           {allowAiFix ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded border border-red-100 bg-red-50 px-2.5 py-1.5 text-sm font-medium text-red-500 transition hover:bg-red-100"
+              className="flex items-center gap-2 rounded border border-border bg-muted px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:bg-accent"
               onClick={() => window._ziteOnFixError?.(props.error)}
             >
               <HammerIcon className="h-4 w-4" />
@@ -48,9 +52,10 @@ function RuntimeErrorFallback(props: { error: Error }) {
           <button
             type="button"
             onClick={reloadApp}
-            className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100"
+            className="flex items-center gap-2 rounded border border-border bg-muted px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:bg-accent"
           >
-            Reload
+            <RotateCw className="h-4 w-4" />
+            Reload the page
           </button>
         </div>
       </div>

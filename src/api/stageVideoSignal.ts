@@ -24,7 +24,7 @@ export default createEndpoint({
       throw new ZiteError({ code: 'BAD_REQUEST', message: 'A screen cannot handshake with itself.' });
     }
     const show = await liveShowForVideo(input.liveShowId);
-    if (!show) throw new Error('No show is open, so there is nothing to stream.');
+    if (!show) throw new ZiteError('No show is open, so there is nothing to stream.', 'BAD_REQUEST');
     await zite.stageSignals.create({
       record: {
         liveShow: String(show.id),

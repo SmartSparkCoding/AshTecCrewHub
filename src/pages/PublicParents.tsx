@@ -330,7 +330,7 @@ export default function PublicParents({ inShell = false }: { inShell?: boolean }
       <p className="font-semibold leading-tight">
         {e.title}
         {isTbc && (
-          <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-500">
+          <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
             Date TBC
           </span>
         )}

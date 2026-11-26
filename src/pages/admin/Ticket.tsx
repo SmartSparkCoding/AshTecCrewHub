@@ -69,7 +69,7 @@ export default function Ticket() {
           <Badge variant="outline" className={TYPE_STYLE[t.type]}>{t.type}</Badge>
           <Badge variant="outline" className={STATUS_STYLE[t.status]}>{t.status}</Badge>
           {t.pinned && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-400">
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
               <Pin className="h-3 w-3 mr-1" />Pinned
             </Badge>
           )}
@@ -101,7 +101,7 @@ export default function Ticket() {
             {data.replies.map((r) => (
               <article key={r.id} className={`rounded-2xl border p-4 ${r.kind === 'Internal Note' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-card'}`}>
                 <header className="flex flex-wrap items-center gap-2 mb-2">
-                  {r.kind === 'Internal Note' ? <StickyNote className="h-3.5 w-3.5 text-yellow-400" /> : <Mail className="h-3.5 w-3.5" />}
+                  {r.kind === 'Internal Note' ? <StickyNote className="h-3.5 w-3.5 text-yellow-700 dark:text-yellow-400" /> : <Mail className="h-3.5 w-3.5" />}
                   <span className="text-sm font-medium">{r.kind === 'Internal Note' ? r.authorName : r.recipients}</span>
                   <Badge variant="outline" className={REPLY_KIND_STYLE[r.kind]}>{r.kind}</Badge>
                   <span className="text-xs text-muted-foreground ml-auto">{when(r.sentAt)}</span>
@@ -122,7 +122,7 @@ export default function Ticket() {
           </section>
 
           <section className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
-            <h2 className="text-sm font-semibold flex items-center gap-1.5"><StickyNote className="h-4 w-4 text-yellow-400" />Internal note</h2>
+            <h2 className="text-sm font-semibold flex items-center gap-1.5"><StickyNote className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />Internal note</h2>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Only crew admins can read this. Emails nobody." />
             <div className="flex justify-end">
               <Button variant="secondary" disabled={busy === 'note' || !note.trim()} onClick={() => run('note', () => adminNoteTicket({ id: t.id, message: note }), () => { setNote(''); toast.success('Note added'); })}>
