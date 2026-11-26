@@ -89,6 +89,9 @@ const TABLES = {
   customThemes: { table: 'CustomThemes', arr: [] },
   mcpCallLog: { table: 'McpCallLog', arr: [] },
   pageViews: { table: 'PageViews', arr: [] },
+  catWallets: { table: 'CatWallets', arr: ['owned'] },
+  stageVideo: { table: 'StageVideo', arr: [] },
+  stageSignals: { table: 'StageSignals', arr: [] },
 } as const satisfies Record<string, TableDef>;
 
 export type TableName = keyof typeof TABLES;

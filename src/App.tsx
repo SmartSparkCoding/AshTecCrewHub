@@ -50,6 +50,7 @@ import ShowWorkspace from './pages/ShowWorkspace';
 import LoginCat from './components/LoginCat';
 import PwaWelcome from './components/PwaWelcome';
 import LiveShowDash from './pages/live/LiveShowDash';
+import ShowDashVideo from './pages/live/ShowDashVideo';
 import LiveShowAdmin from './pages/admin/LiveShowAdmin';
 import Widget from './pages/Widget';
 import Watch from './pages/Watch';
@@ -114,6 +115,7 @@ function SignedIn() {
         <Route path="/a/:token" element={<ApprovePresence />} />
         {/* The live show dashboard lives outside the shell; it keeps only its own back button. */}
         <Route path="/show-dash" element={<LiveShowDash />} />
+            <Route path="/show-dash-video" element={<ShowDashVideo />} />
         {/* Batch 6: the compact widget and the watch companion are their own
             minimal surfaces, so they render outside the shell too. */}
         <Route path="/widget" element={<Widget />} />

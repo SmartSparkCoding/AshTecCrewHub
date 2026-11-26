@@ -136,6 +136,13 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
   const [savingScript, setSavingScript] = useState(false);
   const [importing, setImporting] = useState(false);
   const [starting, setStarting] = useState(false);
+  // Ticket 175c2d3e: the time of day, ticking once a minute is plenty for a clock.
+  const [nowLabel, setNowLabel] = useState(() => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+  useEffect(() => {
+    const tick = () => setNowLabel(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    const id = window.setInterval(tick, 20000);
+    return () => window.clearInterval(id);
+  }, []);
   const [confirmStop, setConfirmStop] = useState(false);
   const [switchingCast, setSwitchingCast] = useState(false);
   const [savingDevice, setSavingDevice] = useState(false);
@@ -408,12 +415,20 @@ export default function LiveShowAdmin({ showId: fixedShowId }: { showId?: string
 
   const selected = devices.find((d) => d.id === selectedDevice) ?? null;
 
+
   return (
     <div className="space-y-6">
       {!fixedShowId && (
         <>
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Tv className="h-5 w-5" />Live Show Setup</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Tv className="h-5 w-5" />Live Show Setup
+              {/* Ticket 175c2d3e: the operator wants the time of day here too, so
+                  call times and a running-late interval do not need a second tab. */}
+              <span className="ml-2 rounded-full border px-2 py-0.5 font-mono text-sm font-medium tabular-nums text-muted-foreground" title="The time now">
+                {nowLabel}
+              </span>
+            </h1>
             <p className="text-muted-foreground">Start tonight's show, watch every screen, and control it from here.</p>
           </div>
 
